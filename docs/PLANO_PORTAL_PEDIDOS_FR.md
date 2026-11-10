@@ -1,7 +1,8 @@
 # Plano de construção — Portal de Pedidos França (Dengo)
 
-> Versão 0.1 — 10/11/2026. Documento vivo: será revisado assim que os arquivos-base
-> (packing list, invoice, lista de itens, shelf life, contract date) forem enviados.
+> Versão 0.2 — 10/11/2026. Revisado com base nos arquivos reais: invoice e packing list
+> do SHIP 2611 (PDF + Excel com 12 abas), planilha de pedido de novembro (modelo vazio)
+> e controle de volume do SHIP 2610 (pedido preenchido com plano do PCP).
 
 ## 1. Objetivo
 
@@ -78,28 +79,44 @@ França ver exatamente o que Supply alterou.
 - A lista de itens só abre depois de a data ser informada, porque a data alimenta os
   cálculos de shelf life.
 
-### 4.2 Shelf life × contract date
-Definições por SKU (cadastradas pelo Admin a partir dos arquivos que você vai enviar):
+### 4.2 Shelf life × contract date (regra real, extraída das planilhas)
 
-| Campo | Significado |
-|---|---|
-| `shelf_life_dias` | Validade total do produto a partir da data de produção |
-| `contract_date_dias` | Validade mínima restante que o item precisa ter **na chegada à França** (pode ser em dias ou em % da validade total; o portal aceita os dois e converte para dias) |
-| `transit_dias` | Tempo entre embarque na fábrica e chegada na FR (parâmetro global, com possibilidade de sobrescrever por pedido) |
+O contract date **não é por SKU**: é uma tabela por faixa de shelf life. Cada SKU tem seu
+shelf life (aba `cadastros` / `PMD`) e a faixa define quantas semanas de validade o item
+precisa ter ao chegar na França.
 
-Cálculos (feitos no banco/função pura, exibidos em todas as telas relevantes):
+| Shelf life (dias) | Mín. semanas restantes na chegada | Dias mínimos restantes | Dias para produzir e embarcar | % mínima do shelf life |
+|---|---|---|---|---|
+| 365 | 28 | 196 | 169 | 54% |
+| 210 | 17 | 119 | 91 | 57% |
+| 180 | 15 | 105 | 75 | 58% |
+| 150 | 13 | 91 | 59 | 61% |
+| 120 | 11 | 77 | 43 | 64% |
+| 90 | 9 | 63 | 27 | 70% |
 
-- **Data prevista de chegada FR** = data de embarque + `transit_dias`
-- **Validade restante na chegada** = (data de produção + `shelf_life_dias`) − data de chegada FR
-- **Atende contract date?** = validade restante na chegada ≥ `contract_date_dias`
-- **Data mínima de produção** (coluna do PCP) = data de chegada FR + `contract_date_dias` − `shelf_life_dias`
-  - Se essa data for anterior a hoje, o item já é alertado como "impossível atender o
-    contract date com a data de embarque atual" ainda na fase de Supply.
-- **Data máxima de produção** = data de embarque − lead time interno (parâmetro, p.ex. dias
-  para liberação de qualidade e paletização).
+Fonte: aba `contract date` da planilha de pedido (versão mais recente). A aba
+`CONTRACT DATE` do arquivo da invoice tem valores antigos (210→18, 180→1, 120→11) e
+será descartada. A tabela fica **editável pelo Admin**, com histórico de versões, porque
+ela muda e cada pedido precisa guardar a versão que foi usada.
 
-Assim que o PCP digita a data de produção de uma linha, o portal mostra no mesmo instante
-a validade calculada e um semáforo (verde atende / vermelho não atende / amarelo na margem).
+Cálculos (função pura testada, mesma no banco e na tela):
+
+- **Data mínima de produção** = data de embarque − "dias para produzir e embarcar" da faixa
+  (é exatamente a coluna `PRODUZIR APÓS` / `data minima de produção` da planilha atual).
+- **Validade do lote** = data de produção + shelf life.
+- **Semanas restantes na chegada** = (validade − data de chegada FR) / 7
+  (a invoice hoje usa a *delivery date* como referência; o portal usa data de embarque +
+  transit time, parametrizável).
+- **Atende contract date?** = semanas restantes ≥ mínimo da faixa. Se não atende, o portal
+  mostra o **% de conformidade** (semanas restantes / mínimo), igual à coluna
+  `% of contract date compliance` da invoice.
+- SKU sem shelf life cadastrado aparece como **"SEM REGRA"** e bloqueia o envio até o
+  Admin corrigir, em vez de passar em branco como hoje.
+
+**Credit note.** Hoje a aba `CREDIT NOTE` calcula, para cada item fora do contract date,
+se a França aceita e o valor de crédito sobre o COGS. O portal reproduz isso: quando um lote
+embarcado não atende, a linha entra numa lista "aceite França" e o valor da credit note
+é calculado a partir do COGS incluindo customs.
 
 ### 4.3 Múltiplos por caixa
 - Cada SKU tem unidade de medida (UN, CX, KG…) e `multiplo_caixa`.
@@ -154,21 +171,37 @@ Exibidos por pedido e consolidados por mês/semestre, com gráficos simples.
   SKU · Qtd aprovada · **Data mínima de produção** · Data máxima de produção ·
   Qtd que será produzida · Data de produção · Validade calculada · Atende contract date ·
   Qtd não atendida · Motivo.
+- Coluna "vamos atender?" com os valores que o PCP já usa: **SIM / AVALIAR / NÃO**, e
+  campo de observação livre (ex.: "solicitar da Rodoluki", "problema com matéria-prima").
 - Permite dividir uma linha em mais de um lote (datas diferentes).
+- Visão alternativa em **programa semanal**: matriz SKU × semana ISO com as quantidades
+  programadas (igual à aba `Planilha1` do controle de volume), somando "Programado" e
+  comparando com "Demanda".
 - Botão **Concluir plano** → bloqueia edição, gera resumo e abre a ação **Agendar reunião
   no Teams** (ver seção 7). O plano fica visível para FR, Supply e Operações.
 
 ### 5.5 Operações
-1. **Recebimento** — mesma grade do plano, com campo "qtd recebida fisicamente" e data de
-   recebimento por linha/lote; aceita vários recebimentos parciais. Ao salvar, a aba KPIs
-   atualiza.
+1. **Recebimento** — mesma grade do plano, com campo "qtd recebida fisicamente", **lote**,
+   data de fabricação e validade por linha; aceita vários recebimentos parciais. Ao salvar,
+   a aba KPIs atualiza. Opção de importar o relatório de estoque por lote do SAP (mesmo
+   formato da aba `BBE`: item, descrição, em estoque, UM, lote, fabricação, validade) para
+   preencher lotes e validades de uma vez.
 2. **KPIs** — OTIF volume, SKU, shelf life, on-time; por pedido e consolidado.
-3. **Packing list** — cadastro por pallet: nº pallet, SKU, lote, validade, qtd caixas,
-   qtd unidades, peso líquido/bruto, dimensões; totais automáticos; importação em lote
-   via colar/CSV. Layout espelha o padrão de packing list que você vai enviar.
-4. **Gerar invoice** — consolida o packing list por SKU (qtd total, preço unitário,
-   total, moeda, incoterm, dados do exportador/importador, pesos totais, nº de pallets)
-   no layout da invoice padrão. Exporta Excel e PDF.
+3. **Packing list** — espelha o padrão atual. Por pallet: nº, dimensões (padrão
+   1,00 × 1,20 × 1,10 m), e linhas com ITEM ID, HS CODE, descrição EN, lote, unidade, qtd,
+   peso líquido unitário, peso líquido total, caixas, peso bruto. O portal calcula sozinho
+   a partir do cadastro (peso líquido/un, peso bruto/caixa de transporte) e soma a tara:
+   master box + wrapping (21 kg = 5 + 16) e pallet (15 kg), ambos parametrizáveis.
+   Cabeçalho com nº da invoice relacionada, destino (Dengo Europe SAS, VAT, telefone),
+   fornecedor, total de pallets, peso bruto e líquido. Importação em lote via colar/CSV.
+4. **Gerar invoice** — consolida o packing list por SKU + lote (chave `ITEM ID & LOTE`,
+   como a fórmula atual). Colunas: item nº, ID Dengo, lote, BBE (validade do lote), HS
+   code, cost type, descrição, caixas, peso líquido, qtd, unidade, peso bruto, preço BRL,
+   total BRL, preço EUR, total EUR. Cabeçalho: data, nº, supplier/importer, incoterm (EXW),
+   moeda, due date, **PTAX** do dia (preço EUR × PTAX = BRL), origem. Rodapé: pesos
+   totais, dados bancários, transportadora. Exporta Excel e PDF no layout atual.
+   Preço vem do cadastro (Interco Price EXW €); o COGS incl. customs fica guardado
+   para a credit note.
 5. **Arquivo SAP (dados para NF)** — exporta planilha com os campos necessários para
    a emissão da NF: cliente/CNPJ ou ID estrangeiro, incoterm, moeda, NCM, CFOP de
    exportação, código SAP do material, lote, qtd, UM, valor unitário/total, pesos, nº
@@ -176,9 +209,14 @@ Exibidos por pedido e consolidados por mês/semestre, com gráficos simples.
    (como key user SAP) a partir do que a transação de faturamento exige.
 
 ### 5.6 Admin
-- Portfólio (SKU, descrição PT/FR, UM, múltiplo caixa, preço aprox., moeda, categoria,
-  NCM, código SAP, peso por caixa, ativo/inativo).
-- Shelf life e contract date por SKU.
+- Portfólio, importado da aba `PMD` (o "master data" de produto que hoje vem do Airtable):
+  código SAP BR, código França (FR00xxx), código da ferramenta de pedido FR, descrição
+  BR/EN/FR, família, categoria, status, unidade (Unit/Kg), shelf life, preço interco EXW €,
+  COGS € incl. customs, qtd padrão por caixa, peso líquido/un, peso bruto/caixa, HS code
+  (NCM), composição e percentuais (gordura/proteína do leite, amido, açúcar) usados na
+  aba `FT` para a alfândega.
+- Tabela de contract date por faixa de shelf life (ver 4.2), com versões.
+- Tara de pallet, master box/wrapping, dimensões padrão.
 - Parâmetros: antecedência (60 dias), transit time, lead time interno, e-mails de
   notificação.
 - Usuários e perfis.
@@ -192,7 +230,9 @@ perfil_usuario        (user_id, nome, perfil: fr|supply|pcp|operacoes|admin, ati
 parametro             (chave, valor)                     -- 60 dias, transit, lead time
 produto               (sku, descricao_pt, descricao_fr, um, multiplo_caixa, preco_aprox,
                        moeda, categoria, ncm, codigo_sap, peso_caixa_kg, ativo)
-produto_validade      (sku, shelf_life_dias, contract_date_dias | contract_date_pct)
+produto_codigo        (sku, sistema: sap_br|fr_item|fr_ordering_tool, codigo)   -- de-para
+contract_date_regra   (versao, shelf_life_dias, min_semanas_chegada, dias_produzir_embarcar)
+lote_estoque          (sku, lote, qtd, um, fabricacao, validade, importado_em)   -- aba BBE
 pedido                (id, numero, criado_por, data_embarque, data_chegada_fr_prevista,
                        status, moeda, observacao, criado_em)
 pedido_item           (pedido_id, sku, qtd_solicitada, qtd_aprovada, preco_aprox, obs)
@@ -201,8 +241,13 @@ pedido_alteracao      (pedido_id, item/sku, campo, valor_antigo, valor_novo, usu
 plano_producao        (pedido_id, sku, lote_seq, qtd_planejada, data_producao,
                        data_min_producao*, validade_calc*, atende_contract*, motivo_nao_atend)
 recebimento           (plano_id, qtd_recebida, data_recebimento, usuario)
-packing_list          (pedido_id, numero, data) / packing_list_pallet (…) 
-invoice               (pedido_id, numero, data, incoterm, moeda, totais…)
+packing_list          (pedido_id, numero, data, tara_master_box, tara_pallet)
+packing_list_pallet   (packing_list_id, numero, dimensoes, peso_bruto*, peso_liquido*)
+packing_list_linha    (pallet_id, sku, lote, qtd, um, caixas, peso_liq_un*, peso_bruto*)
+invoice               (pedido_id, numero, data, due_date, incoterm, moeda, ptax, totais…)
+invoice_linha         (invoice_id, sku, lote, bbe, hs_code, qtd, caixas, pesos, preco_eur,
+                       preco_brl*, semanas_restantes*, atende_contract*, pct_conformidade*)
+credit_note           (invoice_linha_id, aceite_franca, cogs_eur, valor_credito*)
 ```
 `*` colunas geradas por função SQL para garantir que o cálculo é o mesmo em todas as telas.
 Segurança por **RLS**: cada perfil só lê/escreve o que a tabela de permissões permite
@@ -245,25 +290,45 @@ vêm do app gest-o-financeira (Vite + React + TS + Supabase), já validados em p
 Cada fase termina com uma demonstração; o portal fica publicado desde a Fase 1 para
 testes com o time.
 
-## 10. O que preciso dos arquivos que você vai enviar
+## 10. O que os arquivos enviados mostraram
 
-1. **Lista de itens** — SKU, descrição, UM, múltiplo por caixa, preço aproximado e moeda,
-   categoria, peso por caixa (se existir), código SAP e NCM.
-2. **Shelf life** — validade total por SKU (dias).
-3. **Contract date** — regra mínima de validade na chegada, por SKU ou geral (dias ou %).
-4. **Padrão do packing list** — para espelhar colunas, totais e layout.
-5. **Padrão da invoice** — cabeçalho (exportador, importador, incoterm, moeda, banco),
-   colunas e rodapé.
-6. **Planilha de pedido atual** — para garantir que nada do processo de hoje fique de fora.
+| Arquivo | O que é | Como entra no portal |
+|---|---|---|
+| `INVOICE_SHIP_2611.xlsx` (12 abas) | A "planilha-mãe" do embarque. `PACKING LIST` é digitada; `INVOICE` é toda fórmula em cima dela + `PMD` + `BBE`; `CONTRACT DATE`, `CREDIT NOTE`, `FT`, `BULK`, `CROSS DOCK`, `PCT` são derivadas | Vira o módulo Operações inteiro (seção 5.5). `PMD` e `PRODUCT INFO` alimentam o cadastro; `BBE` é o estoque por lote do SAP |
+| `INVOICE_SHIP_2611_108321.pdf` | Layout final da invoice comercial | Modelo do PDF/Excel gerado |
+| `pl_SHIP_2611.pdf` | Layout final do packing list, uma página por pallet | Modelo do PDF/Excel gerado |
+| `pedido_de_novembro_ship_1126.xlsx` | Modelo vazio do pedido (data de embarque, itens, cálculos de data mínima) | É exatamente o fluxo FR → PCP que o portal substitui |
+| `VOLUME_SHIP_2610 - controle BR.xlsx` | O mesmo modelo preenchido: 30 itens, plano do PCP (SIM/AVALIAR, semana, obs) e programa semanal | Base para validar os cálculos do portal contra um caso real |
+
+Pontos importantes que os arquivos revelaram:
+
+- **Há pelo menos três sistemas de código** para o mesmo produto: código SAP BR
+  (1000xxx, 1300xxx, 2000xxx, 5200xxx), código França (FR00xxx) e o código da ferramenta
+  de pedido da França (coluna "Product Search Field" do `PMD`). O portal precisa de uma
+  tabela de-para e sempre mostrar o código SAP e o código FR lado a lado.
+- A aba `PCT` mostra que a França concilia a invoice contra o **nº de purchase order** dela
+  (`Ship.202406-PA00143`). Vale ter um campo "PO França" no pedido.
+- O preço interco vem do `PMD` (Interco Price EXW €) e a aba `3TRI INTERCOMP PRICES` é a
+  tabela trimestral. O portal guarda preço com vigência (trimestre).
+- A conversão para BRL usa a **PTAX** informada manualmente na invoice. O portal pode buscar
+  a PTAX do dia automaticamente na API do Banco Central, com opção de sobrescrever.
+- A invoice de novembro teve 42 itens, 8 pallets, 1.593 kg brutos, € 24.178,71.
 
 ## 11. Pontos a confirmar com você
 
-- Transit time padrão fábrica → França (dias) e se varia por modal.
+- Transit time padrão fábrica → França (dias) e se varia por modal. A invoice usa a
+  *delivery date* como referência das semanas restantes; o portal precisa saber calcular
+  essa data a partir do embarque.
 - Lead time interno entre produção e embarque (qualidade, paletização).
-- Moeda do preço aproximado (EUR ou BRL) e da invoice.
-- Se o contract date é em dias ou em % do shelf life.
+- Confirmar que a tabela de contract date da planilha de pedido (28/17/15/13/11/9 semanas)
+  é a vigente, e quem pode alterá-la.
+- Qual código a França deve enxergar no portal: FR00xxx, o código da ferramenta de pedido
+  ou os dois.
 - Se o OTIF deve comparar com o plano do PCP ou com o pedido original (proposta: plano,
   com opção de alternar).
 - Campos exatos exigidos pelo SAP para a NF de exportação (vamos listar juntos a partir
-  da transação usada).
+  da transação usada). Dos arquivos já temos: código do material, lote, qtd, UM, NCM,
+  valor EUR, PTAX, valor BRL, pesos líquido/bruto, incoterm, dados do importador e da
+  transportadora.
 - Se a França terá mais de um usuário/loja e se Supply pode criar pedido em nome da FR.
+- Se a credit note deve ser gerada pelo portal ou só calculada e exportada.
