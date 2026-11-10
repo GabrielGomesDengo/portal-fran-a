@@ -149,7 +149,8 @@ Exibidos por pedido e consolidados por mês/semestre, com gráficos simples.
 
 ### 5.2 França
 1. **Novo pedido → passo 1: data de embarque** (calendário com dias bloqueados antes de
-   hoje + 60; mostra a data prevista de chegada FR).
+   hoje + 60; como o embarque sai sempre na segunda-feira, o calendário destaca as
+   segundas e mostra a chegada prevista na França na quarta seguinte).
 2. **Passo 2: portfólio** — cards/linhas com foto (opcional), SKU, descrição, UM, múltiplo
    por caixa, preço aproximado, shelf life, campo de quantidade com +/− por caixa, filtro
    por categoria, busca.
@@ -331,9 +332,6 @@ Pontos importantes que os arquivos revelaram:
 
 ## 11. Pontos a confirmar com você
 
-- Transit time padrão fábrica → França (dias) e se varia por modal. A invoice usa a
-  *delivery date* como referência das semanas restantes; o portal precisa saber calcular
-  essa data a partir do embarque.
 - Lead time interno entre produção e embarque (qualidade, paletização).
 - Confirmar que a tabela de contract date da planilha de pedido (28/17/15/13/11/9 semanas)
   é a vigente, e quem pode alterá-la. Faixas que aparecem no histórico e não têm regra:
