@@ -300,6 +300,19 @@ testes com o time.
 | `pedido_de_novembro_ship_1126.xlsx` | Modelo vazio do pedido (data de embarque, itens, cálculos de data mínima) | É exatamente o fluxo FR → PCP que o portal substitui |
 | `VOLUME_SHIP_2610 - controle BR.xlsx` | O mesmo modelo preenchido: 30 itens, plano do PCP (SIM/AVALIAR, semana, obs) e programa semanal | Base para validar os cálculos do portal contra um caso real |
 
+**Portfólio inicial.** O portfólio disponível para pedido no portal é a lista de SKUs
+efetivamente embarcados para a França nos últimos 10 meses (dinâmica SKU × soma de
+quantidade, pouco mais de 100 SKUs: barras 20 g e 80 g, bombons, quebra-quebra to go e
+a granel, drágeas, trufas, gotas, ribbons, panetones, ovos, latas). Regras:
+
+- Esses SKUs nascem com status **ativo**; os demais itens do `PMD`/`cadastros` ficam
+  cadastrados mas **inativos**, e o Admin ativa quando um item novo entrar.
+- A quantidade dos últimos 10 meses fica guardada por SKU e aparece para a França como
+  referência ("você pediu X nos últimos 10 meses") e para Supply como sinal de item fora
+  do padrão.
+- O portal recalcula essa lista a cada embarque concluído, então o portfólio "vivo" passa a
+  ser "SKUs embarcados na janela de N meses" (N parametrizável, padrão 10).
+
 Pontos importantes que os arquivos revelaram:
 
 - **Há pelo menos três sistemas de código** para o mesmo produto: código SAP BR
