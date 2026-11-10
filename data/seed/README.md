@@ -9,3 +9,10 @@
 
 Regra de carga proposta: shelf life oficial = `cadastros` (SAP). O valor do `PMD` fica como
 referência e gera alerta no Admin enquanto divergir.
+
+## Histórico real (export de NFs do SAP para Dengo Europe SAS, jan–nov/2026)
+
+| Arquivo | Conteúdo |
+|---|---|
+| `portfolio_franca_10_meses.csv` | **Portfólio ativo inicial**: 131 SKUs embarcados em 18 NFs autorizadas entre 14/01 e 03/11/2026, com quantidade total, nº de embarques, último embarque, shelf life, preço interco e HS code. Todos têm shelf life no SAP; 5 não existem no PMD da França (barras 80 g 1000019/1000054 e trufas kg 1000122/1000123/1000125). |
+| `historico_embarques_2026.csv` | 591 linhas de NF com lote, produção, vencimento, quantidade e o cálculo de aderência ao contract date (dias restantes na data da NF × mínimo da faixa). Serve de **baseline do OTIF de shelf life** e de massa de teste do motor de cálculo. |
