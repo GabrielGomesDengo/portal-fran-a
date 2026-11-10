@@ -96,7 +96,13 @@ precisa ter ao chegar na França.
 
 Fonte: aba `contract date` da planilha de pedido (versão mais recente). A aba
 `CONTRACT DATE` do arquivo da invoice tem valores antigos (210→18, 180→1, 120→11) e
-será descartada. A tabela fica **editável pelo Admin**, com histórico de versões, porque
+será descartada.
+
+**Regra proporcional para shelf life fora da tabela** (decisão de 10/11/2026): o mínimo de
+dias restantes é interpolado linearmente entre as duas faixas vizinhas; abaixo de 90 ou
+acima de 365 dias aplica-se o mesmo percentual da ponta (70% e 54%). Resultado sempre
+arredondado para cima. Exemplos que aparecem no histórico: 100 dias → 68, 135 → 84,
+360 → 194, 500 → 269. O Admin pode substituir qualquer valor por uma faixa explícita. A tabela fica **editável pelo Admin**, com histórico de versões, porque
 ela muda e cada pedido precisa guardar a versão que foi usada.
 
 Cálculos (função pura testada, mesma no banco e na tela):
@@ -320,8 +326,9 @@ Pontos importantes que os arquivos revelaram:
 
 - **Há pelo menos três sistemas de código** para o mesmo produto: código SAP BR
   (1000xxx, 1300xxx, 2000xxx, 5200xxx), código França (FR00xxx) e o código da ferramenta
-  de pedido da França (coluna "Product Search Field" do `PMD`). O portal precisa de uma
-  tabela de-para e sempre mostrar o código SAP e o código FR lado a lado.
+  de pedido da França. **Decisão: o portal usa somente o código SAP** em todas as telas e
+  documentos. Os outros códigos ficam guardados na tabela de-para só para importação e
+  conciliação com a aba `PCT` da França.
 - A aba `PCT` mostra que a França concilia a invoice contra o **nº de purchase order** dela
   (`Ship.202406-PA00143`). Vale ter um campo "PO França" no pedido.
 - O preço interco vem do `PMD` (Interco Price EXW €) e a aba `3TRI INTERCOMP PRICES` é a
@@ -333,11 +340,7 @@ Pontos importantes que os arquivos revelaram:
 ## 11. Pontos a confirmar com você
 
 - Lead time interno entre produção e embarque (qualidade, paletização).
-- Confirmar que a tabela de contract date da planilha de pedido (28/17/15/13/11/9 semanas)
-  é a vigente, e quem pode alterá-la. Faixas que aparecem no histórico e não têm regra:
-  360, 500, 100 e 135 dias.
-- Qual código a França deve enxergar no portal: FR00xxx, o código da ferramenta de pedido
-  ou os dois.
+- Quem pode alterar a tabela de contract date (proposta: só Admin, com histórico).
 - Se o OTIF deve comparar com o plano do PCP ou com o pedido original (proposta: plano,
   com opção de alternar).
 - Campos exatos exigidos pelo SAP para a NF de exportação (vamos listar juntos a partir
