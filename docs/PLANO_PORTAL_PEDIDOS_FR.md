@@ -110,6 +110,8 @@ Cálculos (função pura testada, mesma no banco e na tela):
 - **Atende contract date?** = semanas restantes ≥ mínimo da faixa. Se não atende, o portal
   mostra o **% de conformidade** (semanas restantes / mínimo), igual à coluna
   `% of contract date compliance` da invoice.
+- **Fonte oficial do shelf life é o SAP** (decisão de 10/11/2026); o cadastro da França
+  é só referência e gera alerta quando diverge.
 - SKU sem shelf life cadastrado aparece como **"SEM REGRA"** e bloqueia o envio até o
   Admin corrigir, em vez de passar em branco como hoje.
 
@@ -334,7 +336,8 @@ Pontos importantes que os arquivos revelaram:
   essa data a partir do embarque.
 - Lead time interno entre produção e embarque (qualidade, paletização).
 - Confirmar que a tabela de contract date da planilha de pedido (28/17/15/13/11/9 semanas)
-  é a vigente, e quem pode alterá-la.
+  é a vigente, e quem pode alterá-la. Faixas que aparecem no histórico e não têm regra:
+  360, 500, 100 e 135 dias.
 - Qual código a França deve enxergar no portal: FR00xxx, o código da ferramenta de pedido
   ou os dois.
 - Se o OTIF deve comparar com o plano do PCP ou com o pedido original (proposta: plano,
