@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  --color-marca: #f5b400;
+  --color-marca-esc: #c48f00;
+  --color-tinta: #1a1a1a;
+  --color-tinta-2: #4b4b4b;
+  --color-tinta-3: #7a7a7a;
+  --color-fundo: #faf8f3;
+  --color-cartao: #ffffff;
+  --color-linha: #e6e1d6;
+  --color-ok: #1f9d55;
+  --color-alerta: #d98c00;
+  --color-erro: #d33f2f;
+}
+
+html, body, #root { min-height: 100dvh; background: var(--color-fundo); color: var(--color-tinta); -webkit-font-smoothing: antialiased; }
+button, a, input, select { touch-action: manipulation; }
+input, select, textarea { @apply rounded-md border border-linha bg-cartao px-3 py-2 text-sm outline-none focus:border-marca focus:ring-2 focus:ring-marca/30; }
+@utility btn { @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed; }
+.btn-primario { @apply btn bg-marca text-tinta hover:bg-marca-esc; }
+.btn-secundario { @apply btn border border-linha bg-cartao hover:bg-fundo; }
+.btn-perigo { @apply btn bg-erro text-white hover:opacity-90; }
+.cartao { @apply rounded-xl border border-linha bg-cartao p-4 shadow-sm; }
+.rotulo { @apply block text-xs font-semibold uppercase tracking-wide text-tinta-3; }
+table.grade { @apply w-full text-sm; }
+table.grade th { @apply sticky top-0 bg-fundo px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-tinta-3; }
+table.grade td { @apply border-t border-linha px-2 py-2 align-middle; }
+.pill { @apply inline-block rounded-full px-2 py-0.5 text-xs font-semibold; }
