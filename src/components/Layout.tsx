@@ -33,7 +33,7 @@ export function Layout() {
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">
-            {perfil && <span className="text-tinta-2">{perfil.nome} · <b>{ROTULO_PERFIL[perfil.perfil]}</b></span>}
+            {perfil && <NavLink to="/conta" className="text-tinta-2 hover:underline">{perfil.nome} · <b>{ROTULO_PERFIL[perfil.perfil]}</b></NavLink>}
             <button className="btn-secundario !py-1" onClick={() => sair()}>Sair</button>
           </div>
         </div>
