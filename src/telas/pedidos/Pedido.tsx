@@ -7,7 +7,7 @@ import { carregarTabelaContract } from '../../dados/contractDate'
 import { Carregando, Erro } from '../../components/Carregando'
 import { LinhaDoTempo } from '../../components/LinhaDoTempo'
 import { fmtData, fmtEur, fmtNum } from '../../lib/formatos'
-import { gerarExcelResumoPedido } from '../../documentos/resumoPedido'
+import { exportarPedidoExcel } from '../../documentos/exportarPedido'
 import { PainelSupply } from './PainelSupply'
 import { PainelFranca } from './PainelFranca'
 import { PainelPCP } from './PainelPCP'
@@ -59,10 +59,6 @@ export function Pedido() {
   async function iniciarPlano() {
     setOcupado(true); try { await mudarStatus(pedido, 'em_planejamento_pcp', user!.id); carregar() } catch (e) { setErro(e) } finally { setOcupado(false) }
   }
-  async function reabrirPlano() {
-    const motivo = window.prompt('Motivo para reabrir o plano (obrigatório):'); if (!motivo?.trim()) return
-    setOcupado(true); try { await mudarStatus(pedido, 'em_planejamento_pcp', user!.id, motivo.trim()); carregar() } catch (e) { setErro(e) } finally { setOcupado(false) }
-  }
   async function iniciarValidacao() {
     setOcupado(true); try { await mudarStatus(pedido, 'em_validacao_supply', user!.id); carregar() } catch (e) { setErro(e) } finally { setOcupado(false) }
   }
@@ -75,7 +71,7 @@ export function Pedido() {
           <h1 className="text-2xl font-semibold">Pedido {pedido.numero}</h1>
           <p className="text-sm text-tinta-2">Embarque {fmtData(pedido.data_embarque)} · chegada FR {fmtData(pedido.data_chegada_fr)}{pedido.po_franca ? ` · PO ${pedido.po_franca}` : ''}</p>
         </div>
-        <button className="btn-secundario" onClick={() => gerarExcelResumoPedido(pedido, itens, produtos)}>⬇ Resumo em Excel</button>
+        <button className="btn-secundario" onClick={() => exportarPedidoExcel(dados)}>⬇ Baixar em Excel</button>
       </div>
       <LinhaDoTempo status={pedido.status} />
 
@@ -105,10 +101,7 @@ export function Pedido() {
       )}
       {(pedido.status === 'em_planejamento_pcp' || depoisDoPlano) && (
         <PainelPCP key={`${pedido.status}-${pedido.atualizado_em}`} pedido={pedido} itens={itens} produtos={produtos} plano={plano} contract={contract}
-          leadEstoque={leadEstoque} antecedenciaEstoque={antecedenciaEstoque} userId={user.id} editavel={ehPCP && pedido.status === 'em_planejamento_pcp'} aoConcluir={carregar} />
-      )}
-      {ehPCP && pedido.status === 'plano_concluido' && (
-        <div className="flex justify-end"><button className="btn-secundario" disabled={ocupado} onClick={reabrirPlano}>Reabrir plano</button></div>
+          leadEstoque={leadEstoque} antecedenciaEstoque={antecedenciaEstoque} userId={user.id} editavel={ehPCP && ['em_planejamento_pcp', 'plano_concluido', 'em_recebimento'].includes(pedido.status)} aoConcluir={carregar} />
       )}
       {ehFranca && (pedido.status === 'aguardando_fr' || pedido.status === 'recusado_supply') && (
         <PainelFranca pedido={pedido} itens={itens} produtos={produtos} alteracoes={alteracoes} motivoRecusa={motivoRecusa} userId={user.id} aoConcluir={carregar} />

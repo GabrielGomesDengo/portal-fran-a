@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { mudarStatus } from '../../dados/pedidos'
+import { mudarStatus, registrarEvento } from '../../dados/pedidos'
 import { salvarPlano, type Atendimento, type LotePlano } from '../../dados/plano'
 import { dataMaximaProducao, dataMinimaProducao, situacaoProducao, validadeDoLote, type FaixaContractDate } from '../../dominio/contractDate'
 import { semanaISO } from '../../dominio/calendario'
@@ -39,7 +39,15 @@ export function PainelPCP({ pedido, itens, produtos, plano, contract, leadEstoqu
   }
   function remover(idx: number) { setLotes((ls) => ls.filter((_, i) => i !== idx)) }
 
-  async function salvar() { setErro(null); setOcupado(true); try { await salvarPlano(pedido.id, lotes); setSalvo(true) } catch (e) { setErro(e) } finally { setOcupado(false) } }
+  const concluido = pedido.status !== 'em_planejamento_pcp'
+  async function salvar() {
+    setErro(null); setOcupado(true)
+    try {
+      await salvarPlano(pedido.id, lotes)
+      if (concluido) await registrarEvento(pedido.id, pedido.status, pedido.status, userId, 'Plano de produção atualizado pelo PCP')
+      setSalvo(true)
+    } catch (e) { setErro(e) } finally { setOcupado(false) }
+  }
   async function concluir() {
     const pendentes = lotes.filter((l) => !l.atendimento || (l.atendimento !== 'nao' && !l.data_producao))
     if (pendentes.length > 0 && !window.confirm(`${pendentes.length} lote(s) sem atendimento ou sem data de produção. Concluir mesmo assim?`)) return
@@ -115,9 +123,15 @@ export function PainelPCP({ pedido, itens, produtos, plano, contract, leadEstoqu
       {erro ? <Erro erro={erro} /> : null}
       {editavel && (
         <div className="flex flex-wrap items-center gap-2">
-          <button className="btn-secundario" disabled={ocupado} onClick={salvar}>Salvar rascunho</button>
-          <button className="btn-primario" disabled={ocupado} onClick={concluir}>Concluir plano e agendar reunião no Teams</button>
-          {salvo && <span className="text-sm text-ok">Rascunho salvo.</span>}
+          {concluido ? <>
+            <button className="btn-primario" disabled={ocupado} onClick={salvar}>Salvar alterações do plano</button>
+            <a className="btn-secundario" href={linkReuniaoTeams(pedido, resumo)} target="_blank" rel="noreferrer">Abrir convite da reunião no Teams</a>
+            <span className="text-xs text-tinta-3">Plano concluído: a produção pode mudar, então o PCP segue atualizando. Cada salvamento fica no histórico.</span>
+          </> : <>
+            <button className="btn-secundario" disabled={ocupado} onClick={salvar}>Salvar rascunho</button>
+            <button className="btn-primario" disabled={ocupado} onClick={concluir}>Concluir plano e agendar reunião no Teams</button>
+          </>}
+          {salvo && <span className="text-sm text-ok">Salvo.</span>}
         </div>
       )}
       {!editavel && <a className="btn-secundario" href={linkReuniaoTeams(pedido, resumo)} target="_blank" rel="noreferrer">Abrir convite da reunião no Teams</a>}
