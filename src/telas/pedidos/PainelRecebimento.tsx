@@ -51,15 +51,18 @@ export function PainelRecebimento({ pedido, itens, produtos, plano, recebimentos
   async function salvar(concluirRecebimento = false) {
     setErro(null); setOcupado(true)
     try {
+      if (concluirRecebimento && linhas.every((l) => l.qtd_recebida <= 0)) throw new Error('Informe pelo menos um lote recebido antes de concluir.')
       await salvarRecebimentos(pedido.id, linhas, userId)
-      if (pedido.status === 'plano_concluido') await mudarStatus(pedido, 'em_recebimento', userId, null)
+      let atual = pedido
+      if (atual.status === 'plano_concluido') { await mudarStatus(atual, 'em_recebimento', userId, null); atual = { ...atual, status: 'em_recebimento' } }
       else await registrarEvento(pedido.id, pedido.status, pedido.status, userId, 'Recebimento atualizado')
-      if (concluirRecebimento) await mudarStatus({ ...pedido, status: 'em_recebimento' }, 'packing_list', userId, 'Recebimento concluído')
+      if (concluirRecebimento && atual.status === 'em_recebimento') await mudarStatus(atual, 'packing_list', userId, 'Recebimento concluído')
       setSalvo(true); aoConcluir()
     } catch (e) { setErro(e) } finally { setOcupado(false) }
   }
-  const pct = (v: number | null) => (v === null ? '—' : `${Math.round(v * 100)}%`)
-  const cor = (v: number | null) => (v === null ? '' : v >= 0.95 ? 'text-ok' : v >= 0.8 ? 'text-alerta' : 'text-erro')
+  const nadaRecebido = linhas.every((l) => l.qtd_recebida <= 0)
+  const pct = (v: number | null) => (v === null || nadaRecebido ? '—' : `${Math.round(v * 100)}%`)
+  const cor = (v: number | null) => (v === null || nadaRecebido ? '' : v >= 0.95 ? 'text-ok' : v >= 0.8 ? 'text-alerta' : 'text-erro')
   const naoConfirmadas = linhas.filter((l) => l.qtd_recebida > 0 && !l.confirmado).length
 
   return (
@@ -109,8 +112,8 @@ export function PainelRecebimento({ pedido, itens, produtos, plano, recebimentos
             </select></label>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {naoConfirmadas > 0 && <span className="text-xs text-alerta">{naoConfirmadas} lote(s) recebido(s) sem confirmação</span>}
-            <button className="btn-secundario" disabled={ocupado} onClick={() => salvar(false)}>Salvar recebimento</button>
-            {pedido.status === 'em_recebimento' && <button className="btn-primario" disabled={ocupado || naoConfirmadas > 0} onClick={() => salvar(true)}>Concluir recebimento → packing list</button>}
+            <button className="btn-secundario" disabled={ocupado} onClick={() => salvar(false)}>Salvar recebimento (parcial)</button>
+            {['plano_concluido', 'em_recebimento'].includes(pedido.status) && <button className="btn-primario" disabled={ocupado || naoConfirmadas > 0} title={naoConfirmadas > 0 ? 'Confirme todos os lotes recebidos' : ''} onClick={() => salvar(true)}>Concluir recebimento → packing list</button>}
             {salvo && <span className="text-sm text-ok">Salvo.</span>}
           </div>
         </div>
