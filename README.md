@@ -40,6 +40,8 @@ update perfil_usuario set perfil = 'admin', ativo = true where email = 'seu@emai
 
 ## Deploy na Vercel
 
+Produção: **https://portal-fran-a.vercel.app** (projeto `portal-fran-a` no time dengo-projects1; cada push na `main` publica sozinho).
+
 Importar o repositório (framework Vite), cadastrar `VITE_SUPABASE_URL` e
 `VITE_SUPABASE_ANON_KEY`. `vercel.json` reescreve as rotas para `index.html`. No Supabase,
 adicionar a URL da Vercel em *Authentication > URL Configuration*.
