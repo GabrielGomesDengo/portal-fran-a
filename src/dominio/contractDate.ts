@@ -101,3 +101,21 @@ export function avaliarValidade(
   const dias = diasEntre(dataChegada, validade)
   return { validade, diasRestantesChegada: dias, minimoDias: minimo, atende: dias >= minimo, conformidade: dias / minimo, semanasRestantes: dias / 7 }
 }
+
+/**
+ * Data máxima de produção: o lote desce para o estoque em D+`leadEstoqueDias` e precisa
+ * estar disponível `antecedenciaEstoqueDias` antes do embarque (padrão: 1 e 7 → embarque − 8).
+ */
+export function dataMaximaProducao(dataEmbarque: DataLocal, leadEstoqueDias: number, antecedenciaEstoqueDias: number): DataLocal {
+  return somarDias(dataEmbarque, -(leadEstoqueDias + antecedenciaEstoqueDias))
+}
+
+export type SituacaoProducao = 'ok' | 'antes_minima' | 'depois_maxima' | 'sem_regra'
+
+/** Classifica uma data de produção contra a janela [mínima, máxima]. */
+export function situacaoProducao(dataProducao: DataLocal, minima: DataLocal | null, maxima: DataLocal): SituacaoProducao {
+  if (minima === null) return 'sem_regra'
+  if (dataProducao < minima) return 'antes_minima'
+  if (dataProducao > maxima) return 'depois_maxima'
+  return 'ok'
+}

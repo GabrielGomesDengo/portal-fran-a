@@ -87,3 +87,13 @@ export function diaDaSemana(data: DataLocal): number {
   const p = partes(data)
   return new Date(Date.UTC(p.ano, p.mes - 1, p.dia)).getUTCDay()
 }
+
+/** Semana ISO 8601 (1–53) de uma data civil. */
+export function semanaISO(data: DataLocal): number {
+  const p = partes(data)
+  const d = new Date(Date.UTC(p.ano, p.mes - 1, p.dia))
+  const dia = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - dia)
+  const inicioAno = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil(((d.getTime() - inicioAno.getTime()) / 86_400_000 + 1) / 7)
+}

@@ -51,3 +51,19 @@ describe('histórico de embarques 2026 (386 linhas reais)', () => {
     expect(Math.round((ok / linhas.length) * 100)).toBe(97)
   })
 })
+
+describe('janela de produção do PCP', () => {
+  it('data máxima = embarque − (1 + 7)', async () => {
+    const { dataMaximaProducao, situacaoProducao } = await import('./contractDate')
+    expect(dataMaximaProducao('2027-01-18', 1, 7)).toBe('2027-01-10')
+    expect(situacaoProducao('2026-11-20', '2026-11-07', '2027-01-10')).toBe('ok')
+    expect(situacaoProducao('2026-11-01', '2026-11-07', '2027-01-10')).toBe('antes_minima')
+    expect(situacaoProducao('2027-01-12', '2026-11-07', '2027-01-10')).toBe('depois_maxima')
+  })
+  it('semana ISO', async () => {
+    const { semanaISO } = await import('./calendario')
+    expect(semanaISO('2026-09-07')).toBe(37)
+    expect(semanaISO('2026-11-02')).toBe(45)
+    expect(semanaISO('2027-01-04')).toBe(1)
+  })
+})

@@ -10,11 +10,14 @@ import { fmtData, fmtEur, fmtNum } from '../../lib/formatos'
 import { gerarExcelResumoPedido } from '../../documentos/resumoPedido'
 import { PainelSupply } from './PainelSupply'
 import { PainelFranca } from './PainelFranca'
+import { PainelPCP } from './PainelPCP'
+import { listarPlano, type LotePlano } from '../../dados/plano'
+import { carregarParametros, numero } from '../../dados/parametros'
 import type { FaixaContractDate } from '../../dominio/contractDate'
 import { ROTULO_STATUS, type Pedido as TPedido, type PedidoItem, type Produto, type StatusPedido } from '../../tipos/dominio'
 
 type Evento = { para_status: StatusPedido; motivo: string | null; criado_em: string }
-type Dados = { pedido: TPedido; itens: PedidoItem[]; produtos: Produto[]; eventos: Evento[]; alteracoes: Alteracao[]; contract: FaixaContractDate[] }
+type Dados = { pedido: TPedido; itens: PedidoItem[]; produtos: Produto[]; eventos: Evento[]; alteracoes: Alteracao[]; contract: FaixaContractDate[]; plano: LotePlano[]; leadEstoque: number; antecedenciaEstoque: number }
 
 export function Pedido() {
   const { id } = useParams()
@@ -26,15 +29,18 @@ export function Pedido() {
 
   const carregar = useCallback(() => {
     if (!id) return
-    Promise.all([carregarPedido(id), listarProdutos(), listarEventos(id), listarAlteracoes(id), carregarTabelaContract()])
-      .then(([d, produtos, eventos, alteracoes, c]) => setDados({ ...d, produtos, eventos: eventos as Evento[], alteracoes, contract: c.tabela }))
+    Promise.all([carregarPedido(id), listarProdutos(), listarEventos(id), listarAlteracoes(id), carregarTabelaContract(), listarPlano(id), carregarParametros()])
+      .then(([d, produtos, eventos, alteracoes, c, plano, params]) => setDados({ ...d, produtos, eventos: eventos as Evento[], alteracoes, contract: c.tabela, plano,
+        leadEstoque: numero(params, 'lead_time_estoque_dias', 1), antecedenciaEstoque: numero(params, 'antecedencia_estoque_dias', 7) }))
       .catch(setErro)
   }, [id])
   useEffect(carregar, [carregar])
 
   if (erro) return <Erro erro={erro} />
   if (!dados || !user || !perfil) return <Carregando />
-  const { pedido, itens, produtos, eventos, alteracoes, contract } = dados
+  const { pedido, itens, produtos, eventos, alteracoes, contract, plano, leadEstoque, antecedenciaEstoque } = dados
+  const ehPCP = perfil.perfil === 'pcp' || perfil.perfil === 'admin'
+  const depoisDoPlano = ['plano_concluido', 'em_recebimento', 'packing_list', 'invoice_gerada', 'concluido'].includes(pedido.status)
   const prod = (sku: string) => produtos.find((p) => p.sku === sku)
   const qtdFinal = (i: PedidoItem) => i.qtd_aprovada ?? i.qtd_solicitada
   const total = itens.reduce((s, i) => s + (i.preco_eur ?? prod(i.sku)?.preco_interco_eur ?? 0) * qtdFinal(i), 0)
@@ -49,6 +55,13 @@ export function Pedido() {
     const motivo = window.prompt(para === 'recusado_supply' ? 'Motivo da reprovação (obrigatório):' : 'Motivo para reabrir a validação (obrigatório):')
     if (!motivo || !motivo.trim()) return
     setOcupado(true); try { await mudarStatus(pedido, para, user!.id, motivo.trim()); carregar() } catch (e) { setErro(e) } finally { setOcupado(false) }
+  }
+  async function iniciarPlano() {
+    setOcupado(true); try { await mudarStatus(pedido, 'em_planejamento_pcp', user!.id); carregar() } catch (e) { setErro(e) } finally { setOcupado(false) }
+  }
+  async function reabrirPlano() {
+    const motivo = window.prompt('Motivo para reabrir o plano (obrigatório):'); if (!motivo?.trim()) return
+    setOcupado(true); try { await mudarStatus(pedido, 'em_planejamento_pcp', user!.id, motivo.trim()); carregar() } catch (e) { setErro(e) } finally { setOcupado(false) }
   }
   async function iniciarValidacao() {
     setOcupado(true); try { await mudarStatus(pedido, 'em_validacao_supply', user!.id); carregar() } catch (e) { setErro(e) } finally { setOcupado(false) }
@@ -83,6 +96,19 @@ export function Pedido() {
       )}
       {ehSupply && pedido.status === 'em_validacao_supply' && (
         <PainelSupply key={pedido.atualizado_em} pedido={pedido} itens={itens} produtos={produtos} contract={contract} userId={user.id} aoConcluir={carregar} />
+      )}
+      {ehPCP && pedido.status === 'aprovado' && (
+        <div className="cartao flex items-center justify-between gap-3 border-marca">
+          <p className="text-sm">Pedido aprovado. O PCP pode montar o plano de produção.</p>
+          <button className="btn-primario" disabled={ocupado} onClick={iniciarPlano}>Iniciar plano de produção</button>
+        </div>
+      )}
+      {(pedido.status === 'em_planejamento_pcp' || depoisDoPlano) && (
+        <PainelPCP key={`${pedido.status}-${pedido.atualizado_em}`} pedido={pedido} itens={itens} produtos={produtos} plano={plano} contract={contract}
+          leadEstoque={leadEstoque} antecedenciaEstoque={antecedenciaEstoque} userId={user.id} editavel={ehPCP && pedido.status === 'em_planejamento_pcp'} aoConcluir={carregar} />
+      )}
+      {ehPCP && pedido.status === 'plano_concluido' && (
+        <div className="flex justify-end"><button className="btn-secundario" disabled={ocupado} onClick={reabrirPlano}>Reabrir plano</button></div>
       )}
       {ehFranca && (pedido.status === 'aguardando_fr' || pedido.status === 'recusado_supply') && (
         <PainelFranca pedido={pedido} itens={itens} produtos={produtos} alteracoes={alteracoes} motivoRecusa={motivoRecusa} userId={user.id} aoConcluir={carregar} />
