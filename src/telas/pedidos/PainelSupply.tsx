@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { aplicarEdicaoSupply, mudarStatus } from '../../dados/pedidos'
 import { arredondarParaCaixas } from '../../dominio/caixas'
 import { dataChegadaFR, dataMinimaProducao, type FaixaContractDate } from '../../dominio/contractDate'
-import { fmtData, fmtEur, fmtNum, hoje } from '../../lib/formatos'
+import { fmtData, fmtEur, fmtNum } from '../../lib/formatos'
 import { Erro } from '../../components/Carregando'
 import type { Pedido, PedidoItem, Produto } from '../../tipos/dominio'
 
@@ -62,11 +62,10 @@ export function PainelSupply({ pedido, itens, produtos, contract, userId, aoConc
       </div>
       <div className="overflow-x-auto">
         <table className="grade">
-          <thead><tr><th>SKU</th><th>Produto</th><th>Solicitado</th><th>Aprovado</th><th>Caixas</th><th>Produzir após</th><th>Observação</th><th></th></tr></thead>
+          <thead><tr><th>SKU</th><th>Produto</th><th>Solicitado</th><th>Aprovado</th><th>Caixas</th><th title="Data mínima de produção para o lote atender o contract date na chegada. Só informativo aqui; o PCP recebe o alerta ao informar a data de produção.">Produzir após</th><th>Observação</th><th></th></tr></thead>
           <tbody>
             {linhas.map((l) => {
               const p = prod(l.sku); const minProd = p?.shelf_life_dias ? dataMinimaProducao(chegada, p.shelf_life_dias, contract) : null
-              const inviavel = minProd !== null && minProd < hoje()
               return (
                 <tr key={l.sku} className={l.qtd_aprovada !== l.qtd_solicitada ? 'bg-marca/10' : ''}>
                   <td className="font-mono">{l.sku}{l.novo && <span className="pill ml-1 bg-ok/15 text-ok">novo</span>}</td>
@@ -74,7 +73,7 @@ export function PainelSupply({ pedido, itens, produtos, contract, userId, aoConc
                   <td>{fmtNum(l.qtd_solicitada)}</td>
                   <td><input type="number" className="w-24 !py-1" min={0} step={p?.multiplo_caixa ?? 1} value={l.qtd_aprovada} onChange={(e) => setLinha(l.sku, { qtd_aprovada: Number(e.target.value) })} onBlur={() => ajustarCaixas(l)} /></td>
                   <td>{p?.multiplo_caixa ? fmtNum(l.qtd_aprovada / p.multiplo_caixa, 1) : '—'}</td>
-                  <td className={inviavel ? 'text-erro font-semibold' : ''}>{minProd ? fmtData(minProd) : <span className="text-erro">sem regra</span>}{inviavel && <div className="text-xs">já passou: não atende o contract date</div>}</td>
+                  <td>{minProd ? fmtData(minProd) : <span className="text-erro">sem regra</span>}</td>
                   <td><input className="w-44 !py-1" value={l.observacao} onChange={(e) => setLinha(l.sku, { observacao: e.target.value })} /></td>
                   <td><button className="text-sm text-erro underline" onClick={() => setLinha(l.sku, { qtd_aprovada: 0 })}>zerar</button></td>
                 </tr>

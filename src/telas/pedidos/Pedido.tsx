@@ -43,6 +43,13 @@ export function Pedido() {
   const emValidacao = pedido.status === 'enviado' || pedido.status === 'em_validacao_supply'
   const motivoRecusa = [...eventos].reverse().find((e) => e.para_status === 'recusado_supply')?.motivo ?? null
 
+  const ehAdmin = perfil.perfil === 'admin'
+  const podeReabrir = ehAdmin && (pedido.status === 'aprovado' || pedido.status === 'em_planejamento_pcp' || pedido.status === 'plano_concluido')
+  async function reabrir(para: 'em_validacao_supply' | 'recusado_supply') {
+    const motivo = window.prompt(para === 'recusado_supply' ? 'Motivo da reprovação (obrigatório):' : 'Motivo para reabrir a validação (obrigatório):')
+    if (!motivo || !motivo.trim()) return
+    setOcupado(true); try { await mudarStatus(pedido, para, user!.id, motivo.trim()); carregar() } catch (e) { setErro(e) } finally { setOcupado(false) }
+  }
   async function iniciarValidacao() {
     setOcupado(true); try { await mudarStatus(pedido, 'em_validacao_supply', user!.id); carregar() } catch (e) { setErro(e) } finally { setOcupado(false) }
   }
@@ -63,6 +70,15 @@ export function Pedido() {
         <div className="cartao flex items-center justify-between gap-3 border-marca">
           <p className="text-sm">Pedido novo da França aguardando validação.</p>
           <button className="btn-primario" disabled={ocupado} onClick={iniciarValidacao}>Iniciar validação</button>
+        </div>
+      )}
+      {podeReabrir && (
+        <div className="cartao flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm">Pedido já aprovado. Como Admin, você pode reabrir a validação para editar, ou reprovar.</p>
+          <div className="flex gap-2">
+            <button className="btn-secundario" disabled={ocupado} onClick={() => reabrir('em_validacao_supply')}>Reabrir validação e editar</button>
+            <button className="btn-perigo" disabled={ocupado} onClick={() => reabrir('recusado_supply')}>Reprovar pedido</button>
+          </div>
         </div>
       )}
       {ehSupply && pedido.status === 'em_validacao_supply' && (
