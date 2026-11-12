@@ -4,11 +4,11 @@ import { ROTULO_PERFIL, type Perfil } from '../tipos/dominio'
 
 const MENU: Record<Perfil, { para: string; rotulo: string }[]> = {
   franca: [{ para: '/', rotulo: 'Início' }, { para: '/pedidos/novo', rotulo: 'Novo pedido' }, { para: '/pedidos', rotulo: 'Meus pedidos' }],
-  supply: [{ para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/admin/produtos', rotulo: 'Portfólio' }],
+  supply: [{ para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/kpis', rotulo: 'KPIs' }, { para: '/admin/produtos', rotulo: 'Portfólio' }],
   pcp: [{ para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }],
-  operacoes: [{ para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }],
+  operacoes: [{ para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/kpis', rotulo: 'KPIs' }],
   admin: [
-    { para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/pedidos/novo', rotulo: 'Novo pedido' },
+    { para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/pedidos/novo', rotulo: 'Novo pedido' }, { para: '/kpis', rotulo: 'KPIs' },
     { para: '/admin/produtos', rotulo: 'Portfólio' }, { para: '/admin/parametros', rotulo: 'Parâmetros' }, { para: '/admin/usuarios', rotulo: 'Usuários' },
   ],
 }

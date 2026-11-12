@@ -11,13 +11,18 @@ import { exportarPedidoExcel } from '../../documentos/exportarPedido'
 import { PainelSupply } from './PainelSupply'
 import { PainelFranca } from './PainelFranca'
 import { PainelPCP } from './PainelPCP'
+import { PainelRecebimento } from './PainelRecebimento'
+import { PainelPackingList } from './PainelPackingList'
+import { PainelInvoice } from './PainelInvoice'
+import { carregarInvoice, carregarPackingList, listarRecebimentos, type CreditNote, type Invoice, type InvoiceLinha, type PackingList, type Pallet, type Recebimento } from '../../dados/operacoes'
 import { listarPlano, type LotePlano } from '../../dados/plano'
 import { carregarParametros, numero } from '../../dados/parametros'
 import type { FaixaContractDate } from '../../dominio/contractDate'
 import { ROTULO_STATUS, type Pedido as TPedido, type PedidoItem, type Produto, type StatusPedido } from '../../tipos/dominio'
 
 type Evento = { para_status: StatusPedido; motivo: string | null; criado_em: string }
-type Dados = { pedido: TPedido; itens: PedidoItem[]; produtos: Produto[]; eventos: Evento[]; alteracoes: Alteracao[]; contract: FaixaContractDate[]; plano: LotePlano[]; leadEstoque: number; antecedenciaEstoque: number }
+type Dados = { pedido: TPedido; itens: PedidoItem[]; produtos: Produto[]; eventos: Evento[]; alteracoes: Alteracao[]; contract: FaixaContractDate[]; plano: LotePlano[]; leadEstoque: number; antecedenciaEstoque: number
+  recebimentos: Recebimento[]; packing: { pl: PackingList; pallets: Pallet[] } | null; invoice: { invoice: Invoice; linhas: InvoiceLinha[]; creditNotes: CreditNote[] } | null; params: Record<string, string> }
 
 export function Pedido() {
   const { id } = useParams()
@@ -29,16 +34,19 @@ export function Pedido() {
 
   const carregar = useCallback(() => {
     if (!id) return
-    Promise.all([carregarPedido(id), listarProdutos(), listarEventos(id), listarAlteracoes(id), carregarTabelaContract(), listarPlano(id), carregarParametros()])
-      .then(([d, produtos, eventos, alteracoes, c, plano, params]) => setDados({ ...d, produtos, eventos: eventos as Evento[], alteracoes, contract: c.tabela, plano,
-        leadEstoque: numero(params, 'lead_time_estoque_dias', 1), antecedenciaEstoque: numero(params, 'antecedencia_estoque_dias', 7) }))
+    Promise.all([carregarPedido(id), listarProdutos(), listarEventos(id), listarAlteracoes(id), carregarTabelaContract(), listarPlano(id), carregarParametros(), listarRecebimentos(id), carregarPackingList(id), carregarInvoice(id)])
+      .then(([d, produtos, eventos, alteracoes, c, plano, params, recebimentos, packing, invoice]) => setDados({ ...d, produtos, eventos: eventos as Evento[], alteracoes, contract: c.tabela, plano,
+        leadEstoque: numero(params, 'lead_time_estoque_dias', 1), antecedenciaEstoque: numero(params, 'antecedencia_estoque_dias', 7), recebimentos, packing, invoice, params }))
       .catch(setErro)
   }, [id])
   useEffect(carregar, [carregar])
 
   if (erro) return <Erro erro={erro} />
   if (!dados || !user || !perfil) return <Carregando />
-  const { pedido, itens, produtos, eventos, alteracoes, contract, plano, leadEstoque, antecedenciaEstoque } = dados
+  const { pedido, itens, produtos, eventos, alteracoes, contract, plano, leadEstoque, antecedenciaEstoque, recebimentos, packing, invoice, params } = dados
+  const ehOps = perfil.perfil === 'operacoes' || perfil.perfil === 'admin'
+  const emOps = ['plano_concluido', 'em_recebimento', 'packing_list', 'invoice_gerada', 'concluido'].includes(pedido.status)
+  const chave = `${pedido.status}-${pedido.atualizado_em}`
   const ehPCP = perfil.perfil === 'pcp' || perfil.perfil === 'admin'
   const depoisDoPlano = ['plano_concluido', 'em_recebimento', 'packing_list', 'invoice_gerada', 'concluido'].includes(pedido.status)
   const prod = (sku: string) => produtos.find((p) => p.sku === sku)
@@ -71,7 +79,7 @@ export function Pedido() {
           <h1 className="text-2xl font-semibold">Pedido {pedido.numero}</h1>
           <p className="text-sm text-tinta-2">Embarque {fmtData(pedido.data_embarque)} · chegada FR {fmtData(pedido.data_chegada_fr)}{pedido.po_franca ? ` · PO ${pedido.po_franca}` : ''}</p>
         </div>
-        <button className="btn-secundario" onClick={() => exportarPedidoExcel(dados)}>⬇ Baixar em Excel</button>
+        <button className="btn-secundario" onClick={() => exportarPedidoExcel({ ...dados, recebimentos, packing, invoice })}>⬇ Baixar em Excel</button>
       </div>
       <LinhaDoTempo status={pedido.status} />
 
@@ -102,6 +110,19 @@ export function Pedido() {
       {(pedido.status === 'em_planejamento_pcp' || depoisDoPlano) && (
         <PainelPCP key={`${pedido.status}-${pedido.atualizado_em}`} pedido={pedido} itens={itens} produtos={produtos} plano={plano} contract={contract}
           leadEstoque={leadEstoque} antecedenciaEstoque={antecedenciaEstoque} userId={user.id} editavel={ehPCP && ['em_planejamento_pcp', 'plano_concluido', 'em_recebimento'].includes(pedido.status)} aoConcluir={carregar} />
+      )}
+      {emOps && (ehOps || recebimentos.length > 0) && (
+        <PainelRecebimento key={`rec-${chave}`} pedido={pedido} itens={itens} produtos={produtos} plano={plano} recebimentos={recebimentos} contract={contract}
+          leadEstoque={leadEstoque} antecedenciaEstoque={antecedenciaEstoque} userId={user.id} editavel={ehOps && ['plano_concluido', 'em_recebimento', 'packing_list', 'invoice_gerada'].includes(pedido.status)} aoConcluir={carregar} />
+      )}
+      {['packing_list', 'invoice_gerada', 'concluido'].includes(pedido.status) && (
+        <PainelPackingList key={`pl-${chave}`} pedido={pedido} produtos={produtos} recebimentos={recebimentos} inicial={packing}
+          dimensoesPadrao={params.dimensoes_pallet ?? '1,00 X 1,20 X 1,10'} taraPallet={numero(params, 'tara_pallet_kg', 15)} taraMasterBox={numero(params, 'tara_master_box_kg', 21)}
+          userId={user.id} editavel={ehOps && pedido.status !== 'concluido'} aoConcluir={carregar} />
+      )}
+      {['invoice_gerada', 'concluido'].includes(pedido.status) && packing && (
+        <PainelInvoice key={`inv-${chave}`} pedido={pedido} produtos={produtos} pallets={packing.pallets} recebimentos={recebimentos} inicial={invoice} contract={contract}
+          incoterm={params.incoterm ?? 'EXW'} moeda={params.moeda_invoice ?? 'EUR'} numeroPL={packing.pl.numero} userId={user.id} editavel={ehOps && pedido.status !== 'concluido'} aoConcluir={carregar} />
       )}
       {ehFranca && (pedido.status === 'aguardando_fr' || pedido.status === 'recusado_supply') && (
         <PainelFranca pedido={pedido} itens={itens} produtos={produtos} alteracoes={alteracoes} motivoRecusa={motivoRecusa} userId={user.id} aoConcluir={carregar} />

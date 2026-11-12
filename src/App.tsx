@@ -11,6 +11,7 @@ import { Produtos } from './telas/admin/Produtos'
 import { Parametros } from './telas/admin/Parametros'
 import { Usuarios } from './telas/admin/Usuarios'
 import { MinhaConta } from './telas/MinhaConta'
+import { Kpis } from './telas/Kpis'
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
               <Route path="/pedidos" element={<Pedidos />} />
               <Route path="/pedidos/:id" element={<Pedido />} />
               <Route path="/conta" element={<MinhaConta />} />
+              <Route path="/kpis" element={<Kpis />} />
               <Route element={<RotaPerfil perfis={['franca', 'supply', 'admin']} />}>
                 <Route path="/pedidos/novo" element={<NovoPedido />} />
               </Route>

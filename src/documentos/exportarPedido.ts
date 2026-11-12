@@ -5,11 +5,15 @@ import type { LotePlano } from '../dados/plano'
 import type { Alteracao } from '../dados/pedidos'
 import { dataMaximaProducao, dataMinimaProducao, situacaoProducao, validadeDoLote, type FaixaContractDate } from '../dominio/contractDate'
 import { fmtData } from '../lib/formatos'
+import type { CreditNote, Invoice, InvoiceLinha, PackingList, Pallet, Recebimento } from '../dados/operacoes'
+import { linhaPesoDe, pesoBrutoLinha, pesoLiquidoLinha, totaisPallet } from '../dominio/pesos'
+import { avaliarValidade } from '../dominio/contractDate'
 
 export type DadosExportacao = {
   pedido: Pedido; itens: PedidoItem[]; produtos: Produto[]; plano: LotePlano[]; alteracoes: Alteracao[]
   eventos: { para_status: StatusPedido; motivo: string | null; criado_em: string }[]
   contract: FaixaContractDate[]; leadEstoque: number; antecedenciaEstoque: number
+  recebimentos?: Recebimento[]; packing?: { pl: PackingList; pallets: Pallet[] } | null; invoice?: { invoice: Invoice; linhas: InvoiceLinha[]; creditNotes: CreditNote[] } | null
 }
 
 const AMARELO: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5B400' } }
@@ -70,6 +74,43 @@ export async function exportarPedidoExcel(d: DadosExportacao) {
     wa.columns = [{ width: 20 }, { width: 12 }, { width: 40 }, { width: 18 }, { width: 16 }, { width: 16 }]
     cabecalho(wa, ['Quando', 'SKU', 'Produto', 'Campo', 'De', 'Para'])
     for (const a of alteracoes) wa.addRow([new Date(a.criado_em).toLocaleString('pt-BR'), a.sku ?? '', a.sku ? prod(a.sku)?.descricao_br ?? '' : '', a.campo, a.valor_antigo ?? '', a.valor_novo ?? ''])
+  }
+
+  // ---- Aba Recebimento ----
+  if (d.recebimentos && d.recebimentos.length > 0) {
+    const wr = wb.addWorksheet('Recebimento')
+    wr.columns = [{ width: 12 }, { width: 44 }, { width: 12 }, { width: 12 }, { width: 13 }, { width: 13 }, { width: 16 }, { width: 13 }, { width: 13 }, { width: 11 }]
+    cabecalho(wr, ['SKU', 'Produto', 'Planejado', 'Lote', 'Fabricação', 'Validade', 'Contract date', 'Qtd recebida', 'Data receb.', 'Confirmado'])
+    for (const r of d.recebimentos) {
+      const p = prod(r.sku); const av = r.validade && p?.shelf_life_dias ? avaliarValidade(r.validade, p.shelf_life_dias, pedido.data_chegada_fr, contract) : null
+      wr.addRow([r.sku, p?.descricao_br ?? '', r.qtd_planejada ?? '', r.lote ?? '', fmtData(r.data_fabricacao), fmtData(r.validade), av ? (av.atende ? 'Atende' : `Não atende (${Math.round(av.conformidade * 100)}%)`) : '', r.qtd_recebida, fmtData(r.data_recebimento), r.confirmado ? 'Sim' : 'Não'])
+    }
+  }
+  // ---- Aba Packing list (resumo por pallet) ----
+  if (d.packing && d.packing.pallets.some((p) => p.linhas.length > 0)) {
+    const { pl, pallets } = d.packing
+    const wpl = wb.addWorksheet('Packing list')
+    wpl.columns = [{ width: 8 }, { width: 12 }, { width: 11 }, { width: 44 }, { width: 12 }, { width: 7 }, { width: 10 }, { width: 13 }, { width: 8 }, { width: 13 }]
+    cabecalho(wpl, ['Pallet', 'Item ID', 'HS code', 'Descrição EN', 'Lote', 'UM', 'Qtd', 'Peso líq. kg', 'Caixas', 'Peso bruto kg'])
+    for (const p of pallets) {
+      for (const l of p.linhas) { const pr = prod(l.sku); const lp = linhaPesoDe(pr, l.qtd, l.caixas); wpl.addRow([p.numero, l.sku, pr?.hs_code ?? '', pr?.descricao_en ?? pr?.descricao_br ?? '', l.lote, pr?.unidade ?? '', l.qtd, Number(pesoLiquidoLinha(lp).toFixed(3)), l.caixas, Number(pesoBrutoLinha(lp).toFixed(3))]) }
+      const t = totaisPallet(p.linhas.map((l) => linhaPesoDe(prod(l.sku), l.qtd, l.caixas)), pl.tara_master_box_kg, pl.tara_pallet_kg)
+      const r = wpl.addRow([p.numero, 'TOTAL PALLET', '', p.dimensoes ?? '', '', '', '', Number(t.liquido.toFixed(3)), t.caixas, Number(t.bruto.toFixed(3))]); r.font = { bold: true }
+    }
+  }
+  // ---- Aba Invoice ----
+  if (d.invoice && d.invoice.linhas.length > 0) {
+    const { invoice, linhas, creditNotes } = d.invoice
+    const wi = wb.addWorksheet('Invoice')
+    wi.columns = [{ width: 12 }, { width: 10 }, { width: 12 }, { width: 11 }, { width: 44 }, { width: 8 }, { width: 11 }, { width: 10 }, { width: 11 }, { width: 10 }, { width: 12 }, { width: 10 }, { width: 12 }, { width: 14 }, { width: 14 }]
+    const cabI: [string, string][] = [['Nº invoice', invoice.numero], ['Data', fmtData(invoice.data)], ['Due date', fmtData(invoice.due_date)], ['Incoterm', invoice.incoterm], ['Moeda', invoice.moeda], ['PTAX', String(invoice.ptax ?? '')], ['Delivery date', fmtData(invoice.delivery_date)], ['Packing list', invoice.numero_packing_list ?? '']]
+    cabI.forEach(([k, v]) => { const r = wi.addRow([k, v]); r.getCell(1).font = { bold: true } }); wi.addRow([])
+    cabecalho(wi, ['ID Dengo', 'Lote', 'BBE', 'HS code', 'Descrição', 'Caixas', 'Peso líq. kg', 'Qtd', 'Peso bruto kg', 'EUR', 'Total EUR', 'BRL', 'Total BRL', 'Contract date', 'Credit note EUR'])
+    for (const l of linhas) {
+      const p = prod(l.sku); const av = l.bbe && p?.shelf_life_dias ? avaliarValidade(l.bbe, p.shelf_life_dias, invoice.delivery_date ?? pedido.data_chegada_fr, contract) : null
+      const cn = creditNotes.find((c) => c.invoice_linha_id === l.id)
+      wi.addRow([l.sku, l.lote, fmtData(l.bbe), l.hs_code ?? '', p?.descricao_en ?? p?.descricao_br ?? '', l.caixas ?? '', l.peso_liq_kg ?? '', l.qtd, l.peso_bruto_kg ?? '', l.preco_eur ?? '', (l.preco_eur ?? 0) * l.qtd, invoice.ptax && l.preco_eur !== null ? l.preco_eur * invoice.ptax : '', invoice.ptax && l.preco_eur !== null ? l.preco_eur * invoice.ptax * l.qtd : '', av ? (av.atende ? 'OK' : `${Math.round(av.conformidade * 100)}%`) : '', cn?.valor_credito_eur ?? ''])
+    }
   }
 
   // ---- Aba Histórico ----
