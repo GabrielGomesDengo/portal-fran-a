@@ -9,6 +9,7 @@ import type { Pedido, Produto } from '../tipos/dominio'
 import { linhaPesoDe, pesoBrutoLinha, pesoLiquidoLinha, totaisPallet } from '../dominio/pesos'
 import { fmtData } from '../lib/formatos'
 import type { LinhaInvoiceCalc } from '../telas/pedidos/PainelInvoice'
+import { LOGO_DENGO_PNG } from './logoBase64'
 
 export const EMPRESA = {
   supplier: ['DENGO CHOCOLATES SA', 'CNPJ 23.244.006/0001-00', 'RUA VIGÁRIO TAQUES BITTENCOURT, 171', '04755-060', 'SÃO PAULO - SP - BRAZIL'],
@@ -18,16 +19,14 @@ export const EMPRESA = {
   banco: ['Bank: Itaú Bank S.A.', 'Bank Swift Code: ITAUBRSP', 'Branch Number: 0641', 'Account Number: 11698-3', 'IBAN: BR96 6070 1190 0064 1000 0116 983C 1'],
   transporte: ['TRANSPORTES YASMIN ARMAZ E LOGISTICA LTDA-ME', 'RUA CARLOPOLIS, 140 - ANT. 134 - PARQUE SAO LUIZ', 'CEP: 07170-540 - GUARULHOS - SP', 'CNPJ: 09.123.539/0001-02', 'INSCRIÇÃO ESTADUAL: 336821275110'],
 }
-const AMARELO: [number, number, number] = [245, 180, 0]
+const AMARELO: [number, number, number] = [255, 210, 0]
 const n3 = (v: number | null | undefined) => (v === null || v === undefined ? '' : v.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 }))
 const n2 = (v: number | null | undefined) => (v === null || v === undefined ? '' : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
 const n0 = (v: number | null | undefined) => (v === null || v === undefined ? '' : v.toLocaleString('pt-BR', { maximumFractionDigits: 3 }))
 
-/** Logo "dengo": caixa amarela com o nome em itálico. */
+/** Logo oficial Dengo (PNG). */
 function logo(doc: jsPDF, x: number, y: number, tam = 16) {
-  doc.setFillColor(...AMARELO); doc.rect(x, y, tam, tam, 'F')
-  doc.setFont('times', 'italic'); doc.setFontSize(tam * 0.55); doc.setTextColor(26, 26, 26)
-  doc.text('dengo', x + tam / 2, y + tam * 0.62, { align: 'center' }); doc.setFont('helvetica', 'normal')
+  doc.addImage(LOGO_DENGO_PNG, 'PNG', x, y, tam, tam * 168 / 183)
 }
 function tituloCaixa(doc: jsPDF, texto: string, x: number, y: number, w: number, h = 9) {
   doc.setDrawColor(...AMARELO); doc.setLineWidth(0.4); doc.rect(x, y, w, h)

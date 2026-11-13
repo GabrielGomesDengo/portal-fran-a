@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { Erro } from '../components/Carregando'
+import { Logo } from '../components/Logo'
 
 export function Entrar() {
   const { entrar, cadastrar } = useAuth()
@@ -22,7 +23,7 @@ export function Entrar() {
   return (
     <div className="mx-auto mt-16 max-w-sm">
       <div className="mb-6 text-center">
-        <span className="rounded-md bg-marca px-3 py-1 font-serif text-2xl italic">dengo</span>
+        <Logo tamanho={96} className="mx-auto" />
         <h1 className="mt-3 text-xl font-semibold">Portal de Pedidos França</h1>
       </div>
       <form onSubmit={enviar} className="cartao space-y-3">

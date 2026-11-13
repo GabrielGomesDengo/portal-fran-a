@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --color-marca: #f5b400;
-  --color-marca-esc: #c48f00;
+  --color-marca: #ffd200;
+  --color-marca-esc: #e6bd00;
   --color-tinta: #1a1a1a;
   --color-tinta-2: #4b4b4b;
   --color-tinta-3: #7a7a7a;
@@ -27,3 +27,9 @@ table.grade { @apply w-full text-sm; }
 table.grade th { @apply sticky top-0 bg-fundo px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-tinta-3; }
 table.grade td { @apply border-t border-linha px-2 py-2 align-middle; }
 .pill { @apply inline-block rounded-full px-2 py-0.5 text-xs font-semibold; }
+
+/* Barra de rolagem discreta em listas internas */
+.rolagem-fina { scrollbar-width: thin; }
+@keyframes surgir { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.surgir { animation: surgir .18s ease-out; }
+@media (prefers-reduced-motion: reduce) { .surgir { animation: none; } }

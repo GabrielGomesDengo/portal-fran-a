@@ -24,7 +24,7 @@ function cabecalho(ws: ExcelJS.Worksheet, titulos: string[]) {
 const SIT: Record<string, string> = { ok: 'Atende', antes_minima: 'Não atende: antes da data mínima', depois_maxima: 'Não chega ao estoque a tempo', sem_regra: 'Sem shelf life' }
 
 /** Excel com o mesmo conteúdo que a página do pedido mostra, uma aba por bloco. */
-export async function exportarPedidoExcel(d: DadosExportacao) {
+export async function exportarPedidoExcel(d: DadosExportacao, opcoes: { somenteResumo?: boolean } = {}) {
   const { pedido, itens, produtos, plano, alteracoes, eventos, contract } = d
   const prod = (sku: string) => produtos.find((p) => p.sku === sku)
   const wb = new ExcelJS.Workbook()
@@ -34,8 +34,8 @@ export async function exportarPedidoExcel(d: DadosExportacao) {
   ws.columns = [{ width: 12 }, { width: 46 }, { width: 8 }, { width: 10 }, { width: 13 }, { width: 12 }, { width: 10 }, { width: 12 }, { width: 14 }, { width: 14 }, { width: 30 }]
   ws.mergeCells('A1:K1'); ws.getCell('A1').value = `PEDIDO ${pedido.numero} — DENGO EUROPE SAS → DENGO CHOCOLATES SA`; ws.getCell('A1').font = { bold: true, size: 14 }
   const cab: [string, string][] = [
-    ['Status', ROTULO_STATUS[pedido.status]], ['Data de embarque', fmtData(pedido.data_embarque)], ['Transit (dias)', String(pedido.transit_dias)],
-    ['Chegada prevista FR', fmtData(pedido.data_chegada_fr)], ['PO França', pedido.po_franca ?? ''], ['Criado em', new Date(pedido.criado_em).toLocaleString('pt-BR')],
+    ['Status', ROTULO_STATUS[pedido.status]], ['Modal', pedido.modal === 'maritimo' ? 'Marítimo' : 'Aéreo'], ['Data de embarque', fmtData(pedido.data_embarque)], ['Transit (dias)', String(pedido.transit_dias)],
+    ['Chegada prevista FR', fmtData(pedido.data_chegada_fr)], ['PO França', pedido.po_franca ?? ''], ['Antecedência (dias)', pedido.antecedencia_dias === null ? '' : `${pedido.antecedencia_dias}${pedido.fora_prazo ? ' — fora do prazo' : ''}`], ['Criado em', new Date(pedido.criado_em).toLocaleString('pt-BR')],
     ['Observações', pedido.observacao ?? ''],
   ]
   cab.forEach(([k, v]) => { const r = ws.addRow([k, v]); r.getCell(1).font = { bold: true } })
@@ -51,7 +51,7 @@ export async function exportarPedidoExcel(d: DadosExportacao) {
   ws.addRow([]); ws.addRow(['Valores aproximados (preço interco EXW). Documento válido: invoice comercial.'])
 
   // ---- Aba Plano PCP ----
-  if (plano.length > 0) {
+  if (!opcoes.somenteResumo && plano.length > 0) {
     const wp = wb.addWorksheet('Plano PCP')
     wp.columns = [{ width: 12 }, { width: 46 }, { width: 6 }, { width: 12 }, { width: 14 }, { width: 14 }, { width: 10 }, { width: 13 }, { width: 13 }, { width: 7 }, { width: 12 }, { width: 32 }, { width: 36 }]
     const maxima = dataMaximaProducao(pedido.data_embarque, d.leadEstoque, d.antecedenciaEstoque)
@@ -69,7 +69,7 @@ export async function exportarPedidoExcel(d: DadosExportacao) {
   }
 
   // ---- Aba Alterações ----
-  if (alteracoes.length > 0) {
+  if (!opcoes.somenteResumo && alteracoes.length > 0) {
     const wa = wb.addWorksheet('Alterações Supply')
     wa.columns = [{ width: 20 }, { width: 12 }, { width: 40 }, { width: 18 }, { width: 16 }, { width: 16 }]
     cabecalho(wa, ['Quando', 'SKU', 'Produto', 'Campo', 'De', 'Para'])
@@ -77,7 +77,7 @@ export async function exportarPedidoExcel(d: DadosExportacao) {
   }
 
   // ---- Aba Recebimento ----
-  if (d.recebimentos && d.recebimentos.length > 0) {
+  if (!opcoes.somenteResumo && d.recebimentos && d.recebimentos.length > 0) {
     const wr = wb.addWorksheet('Recebimento')
     wr.columns = [{ width: 12 }, { width: 44 }, { width: 12 }, { width: 12 }, { width: 13 }, { width: 13 }, { width: 16 }, { width: 13 }, { width: 13 }, { width: 11 }]
     cabecalho(wr, ['SKU', 'Produto', 'Planejado', 'Lote', 'Fabricação', 'Validade', 'Contract date', 'Qtd recebida', 'Data receb.', 'Confirmado'])
@@ -87,7 +87,7 @@ export async function exportarPedidoExcel(d: DadosExportacao) {
     }
   }
   // ---- Aba Packing list (resumo por pallet) ----
-  if (d.packing && d.packing.pallets.some((p) => p.linhas.length > 0)) {
+  if (!opcoes.somenteResumo && d.packing && d.packing.pallets.some((p) => p.linhas.length > 0)) {
     const { pl, pallets } = d.packing
     const wpl = wb.addWorksheet('Packing list')
     wpl.columns = [{ width: 8 }, { width: 12 }, { width: 11 }, { width: 44 }, { width: 12 }, { width: 7 }, { width: 10 }, { width: 13 }, { width: 8 }, { width: 13 }]
@@ -99,7 +99,7 @@ export async function exportarPedidoExcel(d: DadosExportacao) {
     }
   }
   // ---- Aba Invoice ----
-  if (d.invoice && d.invoice.linhas.length > 0) {
+  if (!opcoes.somenteResumo && d.invoice && d.invoice.linhas.length > 0) {
     const { invoice, linhas, creditNotes } = d.invoice
     const wi = wb.addWorksheet('Invoice')
     wi.columns = [{ width: 12 }, { width: 10 }, { width: 12 }, { width: 11 }, { width: 44 }, { width: 8 }, { width: 11 }, { width: 10 }, { width: 11 }, { width: 10 }, { width: 12 }, { width: 10 }, { width: 12 }, { width: 14 }, { width: 14 }]
@@ -114,11 +114,16 @@ export async function exportarPedidoExcel(d: DadosExportacao) {
   }
 
   // ---- Aba Histórico ----
+  if (opcoes.somenteResumo) { await baixarWb(wb, pedido); return }
   const wh = wb.addWorksheet('Histórico')
   wh.columns = [{ width: 20 }, { width: 30 }, { width: 60 }]
   cabecalho(wh, ['Quando', 'Status', 'Motivo'])
   for (const e of eventos) wh.addRow([new Date(e.criado_em).toLocaleString('pt-BR'), ROTULO_STATUS[e.para_status] ?? e.para_status, e.motivo ?? ''])
 
+  await baixarWb(wb, pedido)
+}
+
+async function baixarWb(wb: ExcelJS.Workbook, pedido: Pedido) {
   const buf = await wb.xlsx.writeBuffer()
   const url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
   const a = document.createElement('a'); a.href = url; a.download = `Pedido_${pedido.numero}_${pedido.status}.xlsx`; a.click()

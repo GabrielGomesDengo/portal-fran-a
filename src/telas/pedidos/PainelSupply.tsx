@@ -55,6 +55,7 @@ export function PainelSupply({ pedido, itens, produtos, contract, userId, aoConc
   return (
     <section className="cartao space-y-4 border-marca">
       <h2 className="font-semibold">Validação do Supply</h2>
+      {pedido.fora_prazo && <p className="rounded-md border border-alerta/40 bg-alerta/10 p-3 text-sm"><b>Pedido fora do prazo</b> ({pedido.antecedencia_dias} dias de antecedência). Justificativa da França: <i>{pedido.justificativa_prazo ?? '—'}</i>. Aprovar confirma a exceção; o indicador de ciclo mantém o pedido marcado como colocado com atraso.</p>}
       <div className="grid gap-3 md:grid-cols-3">
         <label className="block"><span className="rotulo">Data de embarque</span><input type="date" className="mt-1 w-full" value={data} onChange={(e) => setData(e.target.value)} />
           <span className="text-xs text-tinta-3">Chegada FR {fmtData(chegada)}{data !== pedido.data_embarque && ' · alterada'}</span></label>

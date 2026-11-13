@@ -23,10 +23,12 @@ export async function carregarPedido(id: string): Promise<{ pedido: Pedido; iten
 export async function criarPedido(args: {
   userId: string; dataEmbarque: string; transitDias: number; contractVersao: number;
   poFranca: string | null; observacao: string | null; itens: ItemCarrinho[]
+  modal: 'aereo' | 'maritimo'; antecedenciaDias: number; foraPrazo: boolean; justificativaPrazo: string | null
 }): Promise<Pedido> {
   const { data: pedido, error } = await supabase.from('pedido').insert({
     criado_por: args.userId, data_embarque: args.dataEmbarque, transit_dias: args.transitDias,
     contract_versao: args.contractVersao, po_franca: args.poFranca, observacao: args.observacao, status: 'enviado',
+    modal: args.modal, antecedencia_dias: args.antecedenciaDias, fora_prazo: args.foraPrazo, justificativa_prazo: args.justificativaPrazo,
   }).select('*').single()
   if (error) throw error
   const p = pedido as Pedido
@@ -34,7 +36,7 @@ export async function criarPedido(args: {
     pedido_id: p.id, sku: i.sku, qtd_solicitada: i.qtd, caixas_solicitadas: i.caixas, preco_eur: i.preco_eur,
   })))
   if (e2) throw e2
-  await registrarEvento(p.id, null, 'enviado', args.userId, null)
+  await registrarEvento(p.id, null, 'enviado', args.userId, args.foraPrazo ? `Pedido fora do prazo (${args.antecedenciaDias} dias de antecedência)` : null)
   return p
 }
 
@@ -113,4 +115,15 @@ export async function aplicarEdicaoSupply(pedido: Pedido, itensAtuais: PedidoIte
     await logar(pedido.id, usuario, sku, 'item_removido', a.qtd_aprovada ?? a.qtd_solicitada, null); mudou = true
   }
   return mudou
+}
+
+export async function listarTodosEventos(): Promise<{ pedido_id: string; para_status: StatusPedido; criado_em: string }[]> {
+  const { data, error } = await supabase.from('pedido_evento').select('pedido_id, para_status, criado_em').order('criado_em')
+  if (error) throw error
+  return (data ?? []) as { pedido_id: string; para_status: StatusPedido; criado_em: string }[]
+}
+export async function listarTodosItens(): Promise<PedidoItem[]> {
+  const { data, error } = await supabase.from('pedido_item').select('*')
+  if (error) throw error
+  return (data ?? []) as PedidoItem[]
 }

@@ -22,12 +22,14 @@ export default function App() {
           <Route element={<RotaProtegida />}>
             <Route element={<Layout />}>
               <Route path="/" element={<Inicio />} />
-              <Route path="/pedidos" element={<Pedidos />} />
               <Route path="/pedidos/:id" element={<Pedido />} />
               <Route path="/conta" element={<MinhaConta />} />
-              <Route path="/kpis" element={<Kpis />} />
               <Route element={<RotaPerfil perfis={['franca', 'supply', 'admin']} />}>
                 <Route path="/pedidos/novo" element={<NovoPedido />} />
+              </Route>
+              <Route element={<RotaPerfil perfis={['supply', 'pcp', 'operacoes', 'admin']} />}>
+                <Route path="/pedidos" element={<Pedidos />} />
+                <Route path="/kpis" element={<Kpis />} />
               </Route>
               <Route element={<RotaPerfil perfis={['admin', 'supply']} />}>
                 <Route path="/admin/produtos" element={<Produtos />} />

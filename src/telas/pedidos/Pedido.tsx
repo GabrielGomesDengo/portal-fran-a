@@ -16,12 +16,15 @@ import { PainelPackingList } from './PainelPackingList'
 import { PainelInvoice } from './PainelInvoice'
 import { carregarInvoice, carregarPackingList, listarRecebimentos, type CreditNote, type Invoice, type InvoiceLinha, type PackingList, type Pallet, type Recebimento } from '../../dados/operacoes'
 import { listarPlano, type LotePlano } from '../../dados/plano'
-import { carregarParametros, numero } from '../../dados/parametros'
+import { carregarParametros } from '../../dados/parametros'
+import { regrasDoModal } from '../../dominio/modal'
+import { IndicadorCiclo, SeloPrazo } from '../../components/Ciclo'
+import { RastreioPedido } from './RastreioPedido'
 import type { FaixaContractDate } from '../../dominio/contractDate'
 import { ROTULO_STATUS, type Pedido as TPedido, type PedidoItem, type Produto, type StatusPedido } from '../../tipos/dominio'
 
 type Evento = { para_status: StatusPedido; motivo: string | null; criado_em: string }
-type Dados = { pedido: TPedido; itens: PedidoItem[]; produtos: Produto[]; eventos: Evento[]; alteracoes: Alteracao[]; contract: FaixaContractDate[]; plano: LotePlano[]; leadEstoque: number; antecedenciaEstoque: number
+export type Dados = { pedido: TPedido; itens: PedidoItem[]; produtos: Produto[]; eventos: Evento[]; alteracoes: Alteracao[]; contract: FaixaContractDate[]; plano: LotePlano[]; leadEstoque: number; antecedenciaEstoque: number
   recebimentos: Recebimento[]; packing: { pl: PackingList; pallets: Pallet[] } | null; invoice: { invoice: Invoice; linhas: InvoiceLinha[]; creditNotes: CreditNote[] } | null; params: Record<string, string> }
 
 export function Pedido() {
@@ -36,7 +39,7 @@ export function Pedido() {
     if (!id) return
     Promise.all([carregarPedido(id), listarProdutos(), listarEventos(id), listarAlteracoes(id), carregarTabelaContract(), listarPlano(id), carregarParametros(), listarRecebimentos(id), carregarPackingList(id), carregarInvoice(id)])
       .then(([d, produtos, eventos, alteracoes, c, plano, params, recebimentos, packing, invoice]) => setDados({ ...d, produtos, eventos: eventos as Evento[], alteracoes, contract: c.tabela, plano,
-        leadEstoque: numero(params, 'lead_time_estoque_dias', 1), antecedenciaEstoque: numero(params, 'antecedencia_estoque_dias', 7), recebimentos, packing, invoice, params }))
+        ...(() => { const r = regrasDoModal(params, d.pedido.modal ?? 'aereo'); return { leadEstoque: r.leadEstoqueDias, antecedenciaEstoque: r.antecedenciaEstoqueDias } })(), recebimentos, packing, invoice, params }))
       .catch(setErro)
   }, [id])
   useEffect(carregar, [carregar])
@@ -44,6 +47,9 @@ export function Pedido() {
   if (erro) return <Erro erro={erro} />
   if (!dados || !user || !perfil) return <Carregando />
   const { pedido, itens, produtos, eventos, alteracoes, contract, plano, leadEstoque, antecedenciaEstoque, recebimentos, packing, invoice, params } = dados
+  const regras = regrasDoModal(params, pedido.modal ?? 'aereo')
+  // A França vê só o rastreio do pedido (e a ação de aceitar ajustes, quando houver).
+  if (perfil.perfil === 'franca') return <RastreioPedido dados={dados} novo={!!sp.get('novo')} userId={user.id} regras={regras} recarregar={carregar} />
   const ehOps = perfil.perfil === 'operacoes' || perfil.perfil === 'admin'
   const emOps = ['plano_concluido', 'em_recebimento', 'packing_list', 'invoice_gerada', 'concluido'].includes(pedido.status)
   const chave = `${pedido.status}-${pedido.atualizado_em}-${eventos.length}`
@@ -53,7 +59,7 @@ export function Pedido() {
   const qtdFinal = (i: PedidoItem) => i.qtd_aprovada ?? i.qtd_solicitada
   const total = itens.reduce((s, i) => s + (i.preco_eur ?? prod(i.sku)?.preco_interco_eur ?? 0) * qtdFinal(i), 0)
   const ehSupply = perfil.perfil === 'supply' || perfil.perfil === 'admin'
-  const ehFranca = perfil.perfil === 'franca' || perfil.perfil === 'admin'
+  const ehFranca = perfil.perfil === 'admin'
   const emValidacao = pedido.status === 'enviado' || pedido.status === 'em_validacao_supply'
   const motivoRecusa = [...eventos].reverse().find((e) => e.para_status === 'recusado_supply')?.motivo ?? null
 
@@ -77,15 +83,16 @@ export function Pedido() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Pedido {pedido.numero}</h1>
-          <p className="text-sm text-tinta-2">Embarque {fmtData(pedido.data_embarque)} · chegada FR {fmtData(pedido.data_chegada_fr)}{pedido.po_franca ? ` · PO ${pedido.po_franca}` : ''}</p>
+          <p className="flex flex-wrap items-center gap-2 text-sm text-tinta-2"><span className="pill bg-tinta text-white">{regras.rotulo}</span> Embarque {fmtData(pedido.data_embarque)} · chegada FR {fmtData(pedido.data_chegada_fr)}{pedido.po_franca ? ` · PO ${pedido.po_franca}` : ''} <SeloPrazo pedido={pedido} minimo={regras.antecedenciaPedidoDias} /></p>
         </div>
         <button className="btn-secundario" onClick={() => exportarPedidoExcel({ ...dados, recebimentos, packing, invoice })}>⬇ Baixar em Excel</button>
       </div>
       <LinhaDoTempo status={pedido.status} />
+      <IndicadorCiclo pedido={pedido} eventos={eventos} minimo={regras.antecedenciaPedidoDias} />
 
       {ehSupply && pedido.status === 'enviado' && (
         <div className="cartao flex items-center justify-between gap-3 border-marca">
-          <p className="text-sm">Pedido novo da França aguardando validação.</p>
+          <p className="text-sm">Pedido novo da França aguardando validação.{pedido.fora_prazo && <b className="text-alerta"> Colocado fora do prazo: ao aprovar, você confirma a exceção.</b>}</p>
           <button className="btn-primario" disabled={ocupado} onClick={iniciarValidacao}>Iniciar validação</button>
         </div>
       )}
@@ -117,7 +124,7 @@ export function Pedido() {
       )}
       {['packing_list', 'invoice_gerada', 'concluido'].includes(pedido.status) && (
         <PainelPackingList key={`pl-${chave}`} pedido={pedido} produtos={produtos} recebimentos={recebimentos} inicial={packing}
-          dimensoesPadrao={params.dimensoes_pallet ?? '1,00 X 1,20 X 1,10'} taraPallet={numero(params, 'tara_pallet_kg', 15)} taraMasterBox={numero(params, 'tara_master_box_kg', 21)}
+          dimensoesPadrao={regras.dimensoesPallet} taraPallet={regras.taraPalletKg} taraMasterBox={regras.taraMasterBoxKg}
           userId={user.id} editavel={ehOps && pedido.status !== 'concluido'} aoConcluir={carregar} />
       )}
       {['invoice_gerada', 'concluido'].includes(pedido.status) && packing && (

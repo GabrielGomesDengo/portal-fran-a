@@ -57,6 +57,10 @@ export type Pedido = {
   transit_dias: number
   data_chegada_fr: string
   contract_versao: number
+  modal: 'aereo' | 'maritimo'
+  antecedencia_dias: number | null
+  fora_prazo: boolean
+  justificativa_prazo: string | null
   status: StatusPedido
   observacao: string | null
   criado_em: string
