@@ -6,6 +6,7 @@ import { fmtNum, hoje } from '../../lib/formatos'
 import { Erro } from '../../components/Carregando'
 import type { Pedido, Produto } from '../../tipos/dominio'
 import { exportarPackingListExcel } from '../../documentos/exportarOperacoes'
+import { gerarPackingListPdf } from '../../documentos/pdf'
 
 export function PainelPackingList({ pedido, produtos, recebimentos, inicial, dimensoesPadrao, taraPallet, taraMasterBox, userId, editavel, aoConcluir }: {
   pedido: Pedido; produtos: Produto[]; recebimentos: Recebimento[]; inicial: { pl: PackingList; pallets: Pallet[] } | null
@@ -91,6 +92,7 @@ export function PainelPackingList({ pedido, produtos, recebimentos, inicial, dim
       {erro ? <Erro erro={erro} /> : null}
       <div className="flex flex-wrap gap-2">
         {editavel && <button className="btn-secundario" onClick={addPallet}>+ Pallet</button>}
+        <button className="btn-primario" onClick={() => gerarPackingListPdf(pedido, pl, pallets, produtos, pl.numero)}>⬇ Packing list em PDF</button>
         <button className="btn-secundario" onClick={() => exportarPackingListExcel(pedido, pl, pallets, produtos, pl.numero)}>⬇ Packing list em Excel</button>
         {editavel && <>
           <button className="btn-secundario" disabled={ocupado} onClick={() => salvar(false)}>Salvar packing list</button>

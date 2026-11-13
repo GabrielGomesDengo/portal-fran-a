@@ -7,6 +7,7 @@ import { fmtData, fmtEur, fmtNum, hoje } from '../../lib/formatos'
 import { Erro } from '../../components/Carregando'
 import type { Pedido, Produto } from '../../tipos/dominio'
 import { exportarInvoiceExcel, exportarArquivoSapExcel } from '../../documentos/exportarOperacoes'
+import { gerarInvoicePdf } from '../../documentos/pdf'
 
 export type LinhaInvoiceCalc = InvoiceLinha & { descricao: string; unidade: string; preco_brl: number | null; total_eur: number; total_brl: number | null; semanas_restantes: number | null; atende: boolean | null; conformidade: number | null }
 
@@ -98,6 +99,7 @@ export function PainelInvoice({ pedido, produtos, pallets, recebimentos, inicial
       <label className="block"><span className="rotulo">Observação</span><input className="mt-1 w-full" value={inv.observacao ?? ''} disabled={!editavel} onChange={(e) => f({ observacao: e.target.value || null })} /></label>
       {erro ? <Erro erro={erro} /> : null}
       <div className="flex flex-wrap gap-2">
+        <button className="btn-primario" onClick={() => gerarInvoicePdf(pedido, inv, calc, tot)}>⬇ Invoice em PDF</button>
         <button className="btn-secundario" onClick={() => exportarInvoiceExcel(pedido, inv, calc, tot)}>⬇ Invoice em Excel</button>
         <button className="btn-secundario" onClick={() => exportarArquivoSapExcel(pedido, inv, calc, produtos)}>⬇ Dados para NF (SAP)</button>
         {editavel && <>
