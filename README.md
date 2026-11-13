@@ -65,8 +65,10 @@ data/seed/                  # CSVs extraídos das planilhas atuais
 ## Estado das fases
 
 - [x] Fase 0 — fundação: repo, Supabase, auth, perfis, portfólio, parâmetros, carga inicial
-- [x] Fase 1 — pedido França: calendário 60 dias, portfólio, carrinho, envio, Excel resumo, acompanhamento
-- [ ] Fase 2 — Supply: edição completa, aprovar/ajustar/recusar, diff para a França, audit log, e-mails
-- [ ] Fase 3 — PCP: grade de produção, data mínima, validade, lotes, concluir plano, convite Teams
-- [ ] Fase 4 — Operações: recebimento, KPIs OTIF, packing list, invoice, arquivo SAP
+- [x] Fase 1 — pedido França: calendário 60 dias, portfólio, carrinho, envio, Excel do pedido
+- [x] Fase 2 — Supply: edição completa, aprovar/ajustar/recusar, aceite da França, trilha de alterações; Admin reabre ou reprova pedido aprovado
+- [x] Fase 3 — PCP: janela mínima (contract date) e máxima (estoque D+1, 7 dias antes do embarque), lotes, programa semanal, convite no Teams; plano segue editável após concluir
+- [x] Fase 4 — Operações: recebimento com confirmação de lote/fabricação/quantidade, OTIF (volume, SKU, shelf life, on-time), KPIs, packing list e invoice em PDF/Excel, credit note
+- [ ] Arquivo para NF no SAP — versão preliminar com 24 campos; aguardando a lista oficial de campos
+- [ ] Notificações por e-mail — aguardando definição do provedor
 - [ ] Fase 5 — tradução FR, dashboards, refino com usuários
