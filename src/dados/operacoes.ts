@@ -11,6 +11,11 @@ export async function listarRecebimentos(pedidoId: string): Promise<Recebimento[
   return (data ?? []) as Recebimento[]
 }
 export async function salvarRecebimentos(pedidoId: string, linhas: Recebimento[], usuario: string) {
+  // O plano pode ter sido alterado pelo PCP enquanto esta tela estava aberta: vínculo a lote que não existe mais vira "lote extra".
+  const { data: plano, error: e0 } = await supabase.from('plano_producao').select('id').eq('pedido_id', pedidoId)
+  if (e0) throw e0
+  const validos = new Set((plano ?? []).map((p) => p.id as string))
+  linhas = linhas.map((l) => (l.plano_id && !validos.has(l.plano_id) ? { ...l, plano_id: null } : l))
   const { error: e1 } = await supabase.from('recebimento').delete().eq('pedido_id', pedidoId)
   if (e1) throw e1
   if (linhas.length === 0) return

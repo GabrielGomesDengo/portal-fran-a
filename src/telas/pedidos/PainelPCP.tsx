@@ -43,9 +43,10 @@ export function PainelPCP({ pedido, itens, produtos, plano, contract, leadEstoqu
   async function salvar() {
     setErro(null); setOcupado(true)
     try {
-      await salvarPlano(pedido.id, lotes)
-      if (concluido) await registrarEvento(pedido.id, pedido.status, pedido.status, userId, 'Plano de produção atualizado pelo PCP')
-      setSalvo(true)
+      const gravado = await salvarPlano(pedido.id, lotes)
+      setLotes(gravado)
+      await registrarEvento(pedido.id, pedido.status, pedido.status, userId, concluido ? 'Plano de produção atualizado pelo PCP' : 'Rascunho do plano salvo')
+      setSalvo(true); aoConcluir()
     } catch (e) { setErro(e) } finally { setOcupado(false) }
   }
   async function concluir() {

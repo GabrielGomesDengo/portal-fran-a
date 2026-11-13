@@ -14,11 +14,19 @@ export function PainelRecebimento({ pedido, itens, produtos, plano, recebimentos
   leadEstoque: number; antecedenciaEstoque: number; userId: string; editavel: boolean; aoConcluir: () => void
 }) {
   const prod = (sku: string) => produtos.find((p) => p.sku === sku)
-  const inicial = useMemo<Recebimento[]>(() => recebimentos.length > 0 ? recebimentos : plano.filter((l) => l.atendimento !== 'nao').map((l) => ({
-    pedido_id: pedido.id, plano_id: l.id ?? null, sku: l.sku, lote: null, qtd_planejada: l.qtd_planejada, qtd_recebida: 0,
-    data_fabricacao: l.data_producao, validade: l.data_producao && prod(l.sku)?.shelf_life_dias ? validadeDoLote(l.data_producao, prod(l.sku)!.shelf_life_dias!) : null,
-    data_recebimento: hoje(), confirmado: false,
-  })), [recebimentos, plano, pedido.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Junta o que já foi recebido com os lotes do plano ainda sem recebimento (o PCP pode incluir lotes depois).
+  const inicial = useMemo<Recebimento[]>(() => {
+    const doPlano = (l: LotePlano): Recebimento => ({
+      pedido_id: pedido.id, plano_id: l.id ?? null, sku: l.sku, lote: null, qtd_planejada: l.qtd_planejada, qtd_recebida: 0,
+      data_fabricacao: l.data_producao, validade: l.data_producao && prod(l.sku)?.shelf_life_dias ? validadeDoLote(l.data_producao, prod(l.sku)!.shelf_life_dias!) : null,
+      data_recebimento: hoje(), confirmado: false,
+    })
+    const vinculados = new Set(recebimentos.map((r) => r.plano_id).filter(Boolean))
+    const idsPlano = new Set(plano.map((l) => l.id))
+    const atuais = recebimentos.map((r) => (r.plano_id && !idsPlano.has(r.plano_id) ? { ...r, plano_id: null } : r))
+    const pendentes = plano.filter((l) => l.atendimento !== 'nao' && l.id && !vinculados.has(l.id)).map(doPlano)
+    return [...atuais, ...pendentes].sort((a, b) => a.sku.localeCompare(b.sku))
+  }, [recebimentos, plano, pedido.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const [linhas, setLinhas] = useState<Recebimento[]>(inicial)
   const [base, setBase] = useState<'plano' | 'pedido'>('plano')
   const [erro, setErro] = useState<unknown>(null); const [ocupado, setOcupado] = useState(false); const [salvo, setSalvo] = useState(false)

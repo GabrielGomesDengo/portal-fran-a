@@ -44,8 +44,9 @@ export async function registrarEvento(pedidoId: string, de: StatusPedido | null,
 }
 
 export async function mudarStatus(pedido: Pedido, para: StatusPedido, usuario: string, motivo: string | null = null) {
-  const { error } = await supabase.from('pedido').update({ status: para }).eq('id', pedido.id)
+  const { data, error } = await supabase.from('pedido').update({ status: para }).eq('id', pedido.id).select('id')
   if (error) throw error
+  if (!data?.length) throw new Error('Seu perfil não pode mudar o status deste pedido nesta etapa. Recarregue a página; outra pessoa pode já ter avançado o pedido.')
   await registrarEvento(pedido.id, pedido.status, para, usuario, motivo)
 }
 

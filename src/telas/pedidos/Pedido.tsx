@@ -46,7 +46,7 @@ export function Pedido() {
   const { pedido, itens, produtos, eventos, alteracoes, contract, plano, leadEstoque, antecedenciaEstoque, recebimentos, packing, invoice, params } = dados
   const ehOps = perfil.perfil === 'operacoes' || perfil.perfil === 'admin'
   const emOps = ['plano_concluido', 'em_recebimento', 'packing_list', 'invoice_gerada', 'concluido'].includes(pedido.status)
-  const chave = `${pedido.status}-${pedido.atualizado_em}`
+  const chave = `${pedido.status}-${pedido.atualizado_em}-${eventos.length}`
   const ehPCP = perfil.perfil === 'pcp' || perfil.perfil === 'admin'
   const depoisDoPlano = ['plano_concluido', 'em_recebimento', 'packing_list', 'invoice_gerada', 'concluido'].includes(pedido.status)
   const prod = (sku: string) => produtos.find((p) => p.sku === sku)
@@ -108,7 +108,7 @@ export function Pedido() {
         </div>
       )}
       {(pedido.status === 'em_planejamento_pcp' || depoisDoPlano) && (
-        <PainelPCP key={`${pedido.status}-${pedido.atualizado_em}`} pedido={pedido} itens={itens} produtos={produtos} plano={plano} contract={contract}
+        <PainelPCP key={`pcp-${chave}`} pedido={pedido} itens={itens} produtos={produtos} plano={plano} contract={contract}
           leadEstoque={leadEstoque} antecedenciaEstoque={antecedenciaEstoque} userId={user.id} editavel={ehPCP && ['em_planejamento_pcp', 'plano_concluido', 'em_recebimento'].includes(pedido.status)} aoConcluir={carregar} />
       )}
       {emOps && (ehOps || recebimentos.length > 0) && (
