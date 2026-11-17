@@ -5,11 +5,11 @@ import { Carregando, Erro } from '../../../components/Carregando'
 import { fmtDataHora, fmtNum } from '../../../lib/formatos'
 import { Diferencas, Etiqueta, nomeTabela, rotuloChave } from './comum'
 
-export function Cargas({ destaque }: { destaque?: number }) {
+export function Cargas({ destaque }: { destaque?: number[] }) {
   const [cargas, setCargas] = useState<Carga[] | null>(null)
   const [nomes, setNomes] = useState<Record<string, string>>({})
   const [erro, setErro] = useState<unknown>(null)
-  const [aberta, setAberta] = useState<number | null>(destaque ?? null)
+  const [aberta, setAberta] = useState<number | null>(destaque?.length === 1 ? destaque[0] : null)
   const [linhas, setLinhas] = useState<Record<number, LinhaCarga[]>>({})
   const [desfazendo, setDesfazendo] = useState<number | null>(null)
 
@@ -32,7 +32,7 @@ export function Cargas({ destaque }: { destaque?: number }) {
   return (
     <div className="space-y-3">
       {erro != null && <Erro erro={erro} />}
-      {destaque && <p className="rounded-md bg-ok/10 p-3 text-sm text-ok">Carga nº {destaque} gravada com sucesso.</p>}
+      {destaque && destaque.length > 0 && <p className="rounded-md bg-ok/10 p-3 text-sm text-ok">{destaque.length > 1 ? `Cargas nº ${destaque.join(', ')} gravadas com sucesso.` : `Carga nº ${destaque[0]} gravada com sucesso.`}</p>}
       {!cargas.length ? <p className="cartao text-sm text-tinta-3">Nenhuma carga feita pelo portal ainda.</p> : (
         <div className="cartao overflow-x-auto p-0">
           <table className="grade">

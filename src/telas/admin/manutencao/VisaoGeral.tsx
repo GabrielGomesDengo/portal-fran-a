@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { BASES, baseDoId, pendenciasCadastro, type Base, type Pendencia } from '../../../manutencao/bases'
+import { BASES, MESTRE, baseDoId, pendenciasCadastro, type Base, type Pendencia } from '../../../manutencao/bases'
+import { baixarMestreAtual } from './Importar'
 import { baixarModelo } from '../../../manutencao/excel'
 import { lerTabela, resumoBases, type ResumoBase } from '../../../dados/manutencao'
 import { listarProdutos } from '../../../dados/produtos'
@@ -35,8 +36,19 @@ export function VisaoGeral({ onImportar }: { onImportar: (baseId: string) => voi
 
   return (
     <div className="space-y-6">
+      <section className="cartao flex flex-wrap items-center gap-4 border-marca bg-marca/10">
+        <div className="min-w-64 flex-1">
+          <h2 className="text-lg font-semibold">{MESTRE.nome}</h2>
+          <p className="text-sm text-tinta-2">{MESTRE.descricao} Vem preenchida com os dados atuais; células vermelhas são o que falta para os SKUs ativos.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button className="btn-primario" disabled={baixando === 'mestre'} onClick={async () => { setBaixando('mestre'); try { await baixarMestreAtual() } catch (e) { setErro(e) } finally { setBaixando(null) } }}>{baixando === 'mestre' ? 'Gerando…' : 'Baixar tabela mestre'}</button>
+          <button className="btn-secundario" onClick={() => onImportar(MESTRE.id)}>Importar tabela mestre</button>
+        </div>
+      </section>
+
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Bases</h2>
+        <h2 className="mb-3 text-lg font-semibold">Bases (uma por vez)</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {BASES.map((b) => {
             const r = resumo.find((x) => x.tabela === b.tabela)
@@ -68,7 +80,7 @@ export function VisaoGeral({ onImportar }: { onImportar: (baseId: string) => voi
           <h2 className="text-lg font-semibold">Saúde do cadastro <span className="text-sm font-normal text-tinta-3">· SKUs ativos no portfólio</span></h2>
           <span className={`text-sm font-semibold ${totalPend ? 'text-alerta' : 'text-ok'}`}>{totalPend ? `${fmtNum(totalPend)} pendências` : 'Tudo em dia'}</span>
         </div>
-        <p className="mb-3 text-sm text-tinta-3">Baixe a lista de uma pendência, preencha os campos que faltam e suba de volta em <b>Importar → Produtos</b>.</p>
+        <p className="mb-3 text-sm text-tinta-3">Preencha pela tabela mestre (tudo de uma vez) ou baixe só a lista de uma pendência e suba de volta em <b>Importar → Produtos</b>.</p>
         <ul className="divide-y divide-linha">
           {pend.map((p) => (
             <li key={p.id} className="py-2">

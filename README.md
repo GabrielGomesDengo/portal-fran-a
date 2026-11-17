@@ -39,6 +39,13 @@ que só aceitam o perfil admin e gravam a carga inteira em uma transação.
 As bases e seus cabeçalhos aceitos (inclusive nomes das extrações do SAP) estão em
 `src/manutencao/bases.ts`.
 
+**Tabela mestre (arquivo único):** em Manutenção → Visão geral, "Baixar tabela mestre" gera um
+Excel com os dados atuais (abas Leia-me, Produtos, Parâmetros, Contract date e Dicionário),
+destacando em vermelho o que falta para os SKUs ativos. O mesmo arquivo volta por
+"Importar tabela mestre": uma prévia por aba e uma carga por aba (cada uma pode ser desfeita).
+Substitui a aba cadastros da planilha de volume SHIP, o PMD da França, a dinâmica do portfólio
+e as tabelas de prazos/taras e contract date.
+
 ## Perfis e primeiro acesso
 
 Quem cria conta entra como **França** e **inativo**. Um Admin ativa e define o perfil em

@@ -18,7 +18,7 @@ export function Manutencao() {
   const [params, setParams] = useSearchParams()
   const aba = (ABAS.find((a) => a.id === params.get('aba'))?.id ?? 'visao') as Aba
   const [baseImportar, setBaseImportar] = useState<string | undefined>(params.get('base') ?? undefined)
-  const [cargaNova, setCargaNova] = useState<number | undefined>()
+  const [cargaNova, setCargaNova] = useState<number[] | undefined>()
   const [chaveImportar, setChaveImportar] = useState(0)
 
   const ir = (a: Aba, extra: Record<string, string> = {}) => setParams({ aba: a, ...extra })
@@ -39,8 +39,8 @@ export function Manutencao() {
         ))}
       </nav>
       {aba === 'visao' && <VisaoGeral onImportar={(b) => { setBaseImportar(b); setChaveImportar((k) => k + 1); ir('importar', { base: b }) }} />}
-      {aba === 'importar' && <Importar key={chaveImportar} baseInicial={baseImportar} onConcluir={(id) => { setCargaNova(id); ir('cargas') }} />}
-      {aba === 'cargas' && <Cargas key={cargaNova ?? 0} destaque={cargaNova} />}
+      {aba === 'importar' && <Importar key={chaveImportar} baseInicial={baseImportar} onConcluir={(ids) => { setCargaNova(ids); ir('cargas') }} />}
+      {aba === 'cargas' && <Cargas key={cargaNova?.join() ?? 0} destaque={cargaNova} />}
       {aba === 'auditoria' && <Auditoria />}
     </div>
   )

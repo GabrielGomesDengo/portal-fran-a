@@ -3,7 +3,6 @@ import { baseDoId, converter, pendenciasCadastro, prepararCarga } from './bases'
 import { lerCsv as lerCsvParaTeste } from './excel'
 
 const produtos = baseDoId('produtos')!
-const codigos = baseDoId('codigos_franca')!
 const hist = baseDoId('historico_nf')!
 const col = (b: typeof produtos, campo: string) => b.colunas.find((c) => c.campo === campo)!
 
@@ -65,17 +64,24 @@ describe('prévia da carga', () => {
     expect(p.payload).toEqual([{ sku: '1000011', preco_interco_eur: 0.5 }, { sku: '1000012', preco_interco_eur: 0.4 }, { sku: '1000099', preco_interco_eur: 1, descricao_br: 'NOVO' }])
   })
   it('aceita cabeçalhos alternativos, ignora SKU fora do portal; substituir lista removidos', () => {
+    const base = { ...hist, exigeProduto: true }
     const planilha = [
-      ['Material', 'Sistema', 'Código França', 'Centro'],
-      ['000000000001000011', 'FR_ITEM', 'FR-11', '1001'],
-      ['000000000009999999', 'fr_item', 'FR-99', '1001'],
+      ['Nota fiscal', 'Material', 'Batch', 'Data emissão', 'Centro'],
+      ['000103256', '000000000001000011', 'L1', '14/01/2026', '1001'],
+      ['000103256', '000000000009999999', 'L9', '14/01/2026', '1001'],
     ]
-    const atuaisCod = [{ sku: '1000011', sistema: 'fr_ordering_tool', codigo: 'OT-11' }]
-    const p = prepararCarga(codigos, 'substituir', planilha, atuaisCod, { skus: new Set(['1000011']) })
+    const atuaisNf = [{ nf: '000100000', sku: '1000011', lote: 'L0', data_nf: '2026-01-01' }]
+    const p = prepararCarga(base, 'substituir', planilha, atuaisNf, { skus: new Set(['1000011']) })
     expect(p.faltandoChave).toEqual([])
+    expect(p.cabecalhosIgnorados).toEqual(['Centro'])
     expect(p.linhas.map((l) => l.acao)).toEqual(['novo', 'ignorado'])
-    expect(p.payload).toEqual([{ sku: '1000011', sistema: 'fr_item', codigo: 'FR-11' }])
-    expect(p.removidos).toEqual(atuaisCod)
+    expect(p.payload).toEqual([{ nf: '000103256', sku: '1000011', lote: 'L1', data_nf: '2026-01-14' }])
+    expect(p.removidos).toEqual(atuaisNf)
+  })
+  it('colunas de consulta da tabela mestre não contam como ignoradas', () => {
+    const p = prepararCarga(produtos, 'atualizar', [['Código SAP', 'Volume 10 meses', 'Campos pendentes'], ['1000011', 5, 0]], [{ sku: '1000011' }])
+    expect(p.cabecalhosIgnorados).toEqual([])
+    expect(p.linhas[0].acao).toBe('igual')
   })
   it('número com ponto de milhar (padrão SAP Brasil)', () => {
     expect(converter('1.200', col(hist, 'qtd'))).toEqual({ valor: 1200 })

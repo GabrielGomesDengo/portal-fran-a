@@ -22,6 +22,8 @@ export type Coluna = {
   semZerosEsquerda?: boolean
   /** Coluna NOT NULL no banco: não aceita LIMPAR. */
   naoNulo?: boolean
+  /** Obrigatório para SKU ativo no portfólio (destacado na tabela mestre e na saúde do cadastro). */
+  obrigatorioAtivo?: boolean
   min?: number
 }
 
@@ -41,6 +43,10 @@ export type Base = {
   origemSugerida: string
   /** Substitui o passo a passo padrão da aba Instruções do modelo. */
   instrucoes?: string[]
+  /** Nome da aba desta base na tabela mestre (arquivo único). */
+  aba?: string
+  /** Colunas só de consulta no modelo (calculadas pelo portal; ignoradas na carga). */
+  informativas?: Coluna[]
   colunas: Coluna[]
   ordenarPor: string[]
 }
@@ -49,26 +55,31 @@ const SKU: Coluna = { campo: 'sku', rotulo: 'Código SAP', tipo: 'texto', aliase
 
 export const BASES: Base[] = [
   {
-    id: 'produtos', nome: 'Produtos', tabela: 'produto', chave: ['sku'], modos: ['atualizar'], modoPadrao: 'atualizar',
+    id: 'produtos', nome: 'Produtos', tabela: 'produto', chave: ['sku'], modos: ['atualizar'], modoPadrao: 'atualizar', aba: 'Produtos',
+    informativas: [
+      { campo: 'qtd_10_meses', rotulo: 'Volume 10 meses', tipo: 'decimal', grupo: 'Consulta' },
+      { campo: 'num_embarques_10_meses', rotulo: 'Nº embarques 10 meses', tipo: 'inteiro', grupo: 'Consulta' },
+      { campo: 'ultimo_embarque', rotulo: 'Último embarque', tipo: 'data', grupo: 'Consulta' },
+    ],
     descricao: 'Cadastro mestre dos SKUs: descrições, logística, shelf life, preço e portfólio França.',
     frequencia: 'Quando houver SKU novo ou mudança de cadastro', origemSugerida: 'SAP (MM60 / SE16N MARA-MARC) + tabela de preço interco',
     ordenarPor: ['familia', 'descricao_br'],
     colunas: [
       { ...SKU, grupo: 'Básico' },
-      { campo: 'descricao_br', rotulo: 'Descrição BR', tipo: 'texto', grupo: 'Básico', obrigatorioNovo: true, aliases: ['Descrição', 'Texto breve material', 'Descricao material'] },
+      { obrigatorioAtivo: true, campo: 'descricao_br', rotulo: 'Descrição BR', tipo: 'texto', grupo: 'Básico', obrigatorioNovo: true, aliases: ['Descrição', 'Texto breve material', 'Descricao material'] },
       { campo: 'descricao_en', rotulo: 'Descrição EN', tipo: 'texto', grupo: 'Básico' },
-      { campo: 'descricao_fr', rotulo: 'Descrição FR', tipo: 'texto', grupo: 'Básico', ajuda: 'Nome que a França vê no portal em francês.' },
-      { campo: 'familia', rotulo: 'Família', tipo: 'texto', grupo: 'Básico' },
+      { obrigatorioAtivo: true, campo: 'descricao_fr', rotulo: 'Descrição FR', tipo: 'texto', grupo: 'Básico', ajuda: 'Nome que a França vê no portal em francês.' },
+      { obrigatorioAtivo: true, campo: 'familia', rotulo: 'Família', tipo: 'texto', grupo: 'Básico' },
       { campo: 'categoria', rotulo: 'Categoria', tipo: 'texto', grupo: 'Básico' },
       { campo: 'cost_type', rotulo: 'Cost type', tipo: 'texto', grupo: 'Básico' },
-      { campo: 'unidade', rotulo: 'Unidade', tipo: 'texto', grupo: 'Logística', opcoes: ['Unit', 'Kg'], naoNulo: true, aliases: ['UM', 'UMB', 'Unidade de medida'], ajuda: 'Unit ou Kg.' },
-      { campo: 'multiplo_caixa', rotulo: 'Múltiplo caixa', tipo: 'decimal', grupo: 'Logística', min: 0, aliases: ['Qtd por caixa', 'Unidades por caixa'], ajuda: 'Unidades (ou kg) por caixa.' },
-      { campo: 'peso_liq_un_kg', rotulo: 'Peso líquido un (kg)', tipo: 'decimal', grupo: 'Logística', min: 0, aliases: ['Peso líquido'] },
-      { campo: 'peso_bruto_caixa_kg', rotulo: 'Peso bruto caixa (kg)', tipo: 'decimal', grupo: 'Logística', min: 0, aliases: ['Peso bruto'] },
-      { campo: 'hs_code', rotulo: 'HS code', tipo: 'texto', grupo: 'Logística', aliases: ['NCM', 'HS'] },
-      { campo: 'shelf_life_dias', rotulo: 'Shelf life SAP (dias)', tipo: 'inteiro', grupo: 'Qualidade', min: 1, aliases: ['Shelf life', 'Prazo validade total', 'Prazo de validade total', 'Shelf'], ajuda: 'Fonte oficial para contract date.' },
+      { obrigatorioAtivo: true, campo: 'unidade', rotulo: 'Unidade', tipo: 'texto', grupo: 'Logística', opcoes: ['Unit', 'Kg'], naoNulo: true, aliases: ['UM', 'UMB', 'Unidade de medida'], ajuda: 'Unit ou Kg.' },
+      { obrigatorioAtivo: true, campo: 'multiplo_caixa', rotulo: 'Múltiplo caixa', tipo: 'decimal', grupo: 'Logística', min: 0, aliases: ['Qtd por caixa', 'Unidades por caixa'], ajuda: 'Unidades (ou kg) por caixa.' },
+      { obrigatorioAtivo: true, campo: 'peso_liq_un_kg', rotulo: 'Peso líquido un (kg)', tipo: 'decimal', grupo: 'Logística', min: 0, aliases: ['Peso líquido'] },
+      { obrigatorioAtivo: true, campo: 'peso_bruto_caixa_kg', rotulo: 'Peso bruto caixa (kg)', tipo: 'decimal', grupo: 'Logística', min: 0, aliases: ['Peso bruto'] },
+      { obrigatorioAtivo: true, campo: 'hs_code', rotulo: 'HS code', tipo: 'texto', grupo: 'Logística', aliases: ['NCM', 'HS'] },
+      { obrigatorioAtivo: true, campo: 'shelf_life_dias', rotulo: 'Shelf life SAP (dias)', tipo: 'inteiro', grupo: 'Qualidade', min: 1, aliases: ['Shelf life', 'Prazo validade total', 'Prazo de validade total', 'Shelf'], ajuda: 'Fonte oficial para contract date.' },
       { campo: 'shelf_life_dias_franca', rotulo: 'Shelf life França (dias)', tipo: 'inteiro', grupo: 'Qualidade', min: 1, ajuda: 'Referência da França; divergências viram alerta.' },
-      { campo: 'preco_interco_eur', rotulo: 'Preço interco (€)', tipo: 'decimal', grupo: 'Comercial', min: 0, aliases: ['Preço', 'Preco EUR', 'Price'] },
+      { obrigatorioAtivo: true, campo: 'preco_interco_eur', rotulo: 'Preço interco (€)', tipo: 'decimal', grupo: 'Comercial', min: 0, aliases: ['Preço', 'Preco EUR', 'Price'] },
       { campo: 'cogs_eur', rotulo: 'COGS (€)', tipo: 'decimal', grupo: 'Comercial', min: 0, aliases: ['COGS'] },
       { campo: 'ativo', rotulo: 'Ativo no portfólio', tipo: 'booleano', grupo: 'Portfólio', naoNulo: true, aliases: ['Ativo'], ajuda: 'Sim = aparece no catálogo da França.' },
     ],
@@ -91,18 +102,7 @@ export const BASES: Base[] = [
     ],
   },
   {
-    id: 'codigos_franca', nome: 'Códigos França', tabela: 'produto_codigo', chave: ['sku', 'sistema'], modos: ['atualizar', 'substituir'], modoPadrao: 'atualizar', exigeProduto: true,
-    descricao: 'De-para entre o código SAP e os códigos usados pela França.',
-    frequencia: 'Quando a França criar códigos novos', origemSugerida: 'PMD / cadastro da Dengo Europe',
-    ordenarPor: ['sku', 'sistema'],
-    colunas: [
-      SKU,
-      { campo: 'sistema', rotulo: 'Sistema', tipo: 'texto', opcoes: ['fr_item', 'fr_ordering_tool'], ajuda: 'fr_item (código do item na França) ou fr_ordering_tool.' },
-      { campo: 'codigo', rotulo: 'Código França', tipo: 'texto', obrigatorioNovo: true },
-    ],
-  },
-  {
-    id: 'parametros', nome: 'Parâmetros', tabela: 'parametro', chave: ['chave'], modos: ['atualizar'], modoPadrao: 'atualizar', somenteExistentes: true,
+    id: 'parametros', nome: 'Parâmetros', tabela: 'parametro', chave: ['chave'], modos: ['atualizar'], modoPadrao: 'atualizar', somenteExistentes: true, aba: 'Parâmetros',
     descricao: 'Prazos, trânsito, taras e dimensões por modal usados nos cálculos do portal.',
     frequencia: 'Quando a regra mudar', origemSugerida: 'Definição Supply / Logística',
     ordenarPor: ['chave'],
@@ -113,7 +113,7 @@ export const BASES: Base[] = [
     ],
   },
   {
-    id: 'contract_date', nome: 'Regra de contract date', tabela: 'contract_date_regra', chave: ['versao', 'shelf_life_dias'], modos: ['atualizar'], modoPadrao: 'atualizar',
+    id: 'contract_date', nome: 'Regra de contract date', tabela: 'contract_date_regra', chave: ['versao', 'shelf_life_dias'], modos: ['atualizar'], modoPadrao: 'atualizar', aba: 'Contract date',
     descricao: 'Shelf life × dias mínimos de validade na chegada à França. Faixas fora da tabela são calculadas proporcionalmente.',
     frequencia: 'Quando o contrato mudar', origemSugerida: 'Contrato Dengo Europe',
     ordenarPor: ['versao', 'shelf_life_dias'],
@@ -126,6 +126,12 @@ export const BASES: Base[] = [
   },
 ]
 
+/** Tabela mestre: um arquivo com uma aba por base (Produtos, Parâmetros, Contract date). */
+export const MESTRE = {
+  id: 'mestre', nome: 'Tabela mestre (arquivo único)',
+  descricao: 'Um só arquivo com todo o cadastro: produtos, parâmetros e contract date. Substitui as planilhas de cadastro, PMD, shelf life e preços.',
+  partes: ['produtos', 'parametros', 'contract_date'],
+}
 export const baseDaTabela = (tabela: string) => BASES.find((b) => b.tabela === tabela)
 export const baseDoId = (id: string) => BASES.find((b) => b.id === id)
 
@@ -145,6 +151,7 @@ export function normalizarCabecalho(s: string): string {
 export function valorCru(v: unknown): unknown {
   if (v && typeof v === 'object' && !(v instanceof Date)) {
     const o = v as Record<string, unknown>
+    if ('formula' in o || 'sharedFormula' in o) return 'result' in o ? valorCru(o.result) : null
     if ('result' in o) return valorCru(o.result)
     if ('richText' in o && Array.isArray(o.richText)) return (o.richText as { text: string }[]).map((r) => r.text).join('')
     if ('text' in o) return valorCru(o.text)
@@ -348,7 +355,7 @@ export function prepararCarga(base: Base, modo: Modo, linhas: unknown[][], atuai
   return {
     base, modo,
     colunasReconhecidas: [...mapa.entries()].map(([i, coluna]) => ({ coluna, cabecalho: cab[i] })),
-    cabecalhosIgnorados: ignorados, faltandoChave,
+    cabecalhosIgnorados: ignorados.filter((h) => !(base.informativas ?? []).some((c) => normalizarCabecalho(c.rotulo) === normalizarCabecalho(h)) && normalizarCabecalho(h) !== 'campos pendentes'), faltandoChave,
     linhas: saida, removidos, contagem,
     payload: validas.map((l) => ({ ...l.dados })),
   }

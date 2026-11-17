@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { conciliarRecebimento, ESTOQUE_DEPOSITO_SAP, lerEstoqueSap, type Destino, type LinhaRecebimento } from '../../dominio/recebimentoSap'
 import { avaliarValidade, type FaixaContractDate } from '../../dominio/contractDate'
-import { baixarModelo, lerArquivo } from '../../manutencao/excel'
+import { abaDaBase, baixarModelo, lerArquivo } from '../../manutencao/excel'
 import { fmtData, fmtNum, hoje } from '../../lib/formatos'
 import { Erro } from '../../components/Carregando'
 import type { Pedido, PedidoItem, Produto } from '../../tipos/dominio'
@@ -44,7 +44,7 @@ export function ImportarEstoqueSap({ pedido, itens, produtos, linhas, contract, 
 
   async function ler(f: File) {
     setErro(null); setLendo(true); setArquivo(f.name); setMatriz(null)
-    try { setMatriz((await lerArquivo(f)).linhas) } catch (e) { setErro(e) } finally { setLendo(false) }
+    try { setMatriz(abaDaBase(ESTOQUE_DEPOSITO_SAP, (await lerArquivo(f)).abas)!.linhas) } catch (e) { setErro(e) } finally { setLendo(false) }
   }
 
   const itensConc = conf?.itens ?? []
