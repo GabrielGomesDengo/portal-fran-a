@@ -39,6 +39,8 @@ export type Base = {
   somenteExistentes?: boolean
   frequencia: string
   origemSugerida: string
+  /** Substitui o passo a passo padrão da aba Instruções do modelo. */
+  instrucoes?: string[]
   colunas: Coluna[]
   ordenarPor: string[]
 }
@@ -69,20 +71,6 @@ export const BASES: Base[] = [
       { campo: 'preco_interco_eur', rotulo: 'Preço interco (€)', tipo: 'decimal', grupo: 'Comercial', min: 0, aliases: ['Preço', 'Preco EUR', 'Price'] },
       { campo: 'cogs_eur', rotulo: 'COGS (€)', tipo: 'decimal', grupo: 'Comercial', min: 0, aliases: ['COGS'] },
       { campo: 'ativo', rotulo: 'Ativo no portfólio', tipo: 'booleano', grupo: 'Portfólio', naoNulo: true, aliases: ['Ativo'], ajuda: 'Sim = aparece no catálogo da França.' },
-    ],
-  },
-  {
-    id: 'estoque_lote', nome: 'Estoque por lote', tabela: 'lote_estoque', chave: ['sku', 'lote'], modos: ['substituir', 'atualizar'], modoPadrao: 'substituir', exigeProduto: true,
-    descricao: 'Foto do estoque por lote com fabricação e validade. Base para sugerir lotes no recebimento.',
-    frequencia: 'Diária ou antes de cada embarque', origemSugerida: 'SAP MB52 / MCHB (estoque por lote)',
-    ordenarPor: ['sku', 'validade'],
-    colunas: [
-      SKU,
-      { campo: 'lote', rotulo: 'Lote', tipo: 'texto', aliases: ['Batch', 'Nº lote'] },
-      { campo: 'qtd', rotulo: 'Quantidade', tipo: 'decimal', min: 0, aliases: ['Utilização livre', 'Utilizacao livre', 'Estoque livre', 'Qtd'] },
-      { campo: 'unidade', rotulo: 'Unidade', tipo: 'texto', aliases: ['UMB', 'UM'] },
-      { campo: 'fabricacao', rotulo: 'Data de fabricação', tipo: 'data', aliases: ['Data de produção', 'Data producao', 'Fabricação', 'Produção'] },
-      { campo: 'validade', rotulo: 'Validade', tipo: 'data', aliases: ['Data do vencimento', 'Vencimento', 'Venc.', 'BBE'] },
     ],
   },
   {

@@ -78,7 +78,7 @@ data/seed/                  # CSVs extraídos das planilhas atuais
 - [x] Fase 1 — pedido França: calendário 60 dias, portfólio, carrinho, envio, Excel do pedido
 - [x] Fase 2 — Supply: edição completa, aprovar/ajustar/recusar, aceite da França, trilha de alterações; Admin reabre ou reprova pedido aprovado
 - [x] Fase 3 — PCP: janela mínima (contract date) e máxima (estoque D+1, 7 dias antes do embarque), lotes, programa semanal, convite no Teams; plano segue editável após concluir
-- [x] Fase 4 — Operações: recebimento com confirmação de lote/fabricação/quantidade, OTIF (volume, SKU, shelf life, on-time), KPIs, packing list e invoice em PDF/Excel, credit note
+- [x] Fase 4 — Operações: recebimento com confirmação de lote/fabricação/quantidade (digitado ou importado da transferência no SAP — MB51/MIGO), OTIF (volume, SKU, shelf life, on-time), KPIs, packing list e invoice em PDF/Excel, credit note
 - [ ] Arquivo para NF no SAP — versão preliminar com 24 campos; aguardando a lista oficial de campos
 - [ ] Notificações por e-mail — aguardando definição do provedor
 - [x] Tradução FR (seletor PT | FR)

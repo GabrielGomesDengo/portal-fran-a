@@ -83,15 +83,15 @@ export async function baixarModelo(base: Base, linhas: Record<string, unknown>[]
   add([`Chave: ${base.chave.map((k) => cols.find((c) => c.campo === k)!.rotulo).join(' + ')}`])
   add([])
   add(['Como funciona'], true)
-  ;[
+  ;(base.instrucoes ?? [
     '1. Preencha ou cole os dados na aba "Dados" a partir da linha 3 (as linhas 1 e 2 são o cabeçalho).',
     '2. Célula VAZIA = o valor atual é mantido. Para apagar um valor, escreva LIMPAR.',
     '3. Você pode apagar as colunas que não quer alterar; só a(s) coluna(s)-chave são obrigatórias.',
     '4. Pode colar uma extração do SAP: os cabeçalhos da coluna "Aceita também" são reconhecidos.',
     '   Números em texto seguem o padrão SAP Brasil: vírgula = decimal, ponto = milhar (1.200,50).',
-    base.modos.includes('substituir') ? '5. Modo SUBSTITUIR: o que não estiver na planilha é REMOVIDO da base (use para fotos, ex. estoque).' : '5. Esta base só aceita o modo ATUALIZAR (nada é removido).',
+    base.modos.includes('substituir') ? '5. Modo SUBSTITUIR: o que não estiver na planilha é REMOVIDO da base (use quando o arquivo traz a base completa).' : '5. Esta base só aceita o modo ATUALIZAR (nada é removido).',
     '6. Ao subir o arquivo, o portal mostra a prévia (novos, alterados, erros) antes de gravar. Toda carga pode ser desfeita.',
-  ].forEach((t) => add([t]))
+  ]).forEach((t) => add([t]))
   add([])
   const h = add(['Coluna', 'Campo', 'Tipo', 'Obrigatório', 'Aceita também', 'Observação'], true)
   h.eachCell((c) => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: AMARELO } } })

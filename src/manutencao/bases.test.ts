@@ -3,7 +3,7 @@ import { baseDoId, converter, pendenciasCadastro, prepararCarga } from './bases'
 import { lerCsv as lerCsvParaTeste } from './excel'
 
 const produtos = baseDoId('produtos')!
-const estoque = baseDoId('estoque_lote')!
+const codigos = baseDoId('codigos_franca')!
 const hist = baseDoId('historico_nf')!
 const col = (b: typeof produtos, campo: string) => b.colunas.find((c) => c.campo === campo)!
 
@@ -18,7 +18,7 @@ describe('conversão de células', () => {
     expect(converter('-1', col(produtos, 'preco_interco_eur'))).toHaveProperty('erro')
   })
   it('datas dd/mm/aaaa, ISO e Date do Excel', () => {
-    const c = col(estoque, 'validade')
+    const c = col(hist, 'vencimento')
     expect(converter('10/12/2026', c)).toEqual({ valor: '2026-12-10' })
     expect(converter('2026-12-10', c)).toEqual({ valor: '2026-12-10' })
     expect(converter(new Date(Date.UTC(2026, 11, 10)), c)).toEqual({ valor: '2026-12-10' })
@@ -64,18 +64,21 @@ describe('prévia da carga', () => {
     expect(p.contagem).toMatchObject({ novo: 1, alterado: 1, igual: 1, erro: 3 })
     expect(p.payload).toEqual([{ sku: '1000011', preco_interco_eur: 0.5 }, { sku: '1000012', preco_interco_eur: 0.4 }, { sku: '1000099', preco_interco_eur: 1, descricao_br: 'NOVO' }])
   })
-  it('aceita cabeçalhos do SAP (MB52) e ignora SKU fora do portal; substituir lista removidos', () => {
+  it('aceita cabeçalhos alternativos, ignora SKU fora do portal; substituir lista removidos', () => {
     const planilha = [
-      ['Material', 'Lote', 'Utilização livre', 'Data do vencimento', 'Centro'],
-      ['000000000001000011', 'L1', '1.200', '10/12/2026', '1001'],
-      ['000000000009999999', 'L9', '5', '10/12/2026', '1001'],
+      ['Material', 'Sistema', 'Código França', 'Centro'],
+      ['000000000001000011', 'FR_ITEM', 'FR-11', '1001'],
+      ['000000000009999999', 'fr_item', 'FR-99', '1001'],
     ]
-    const atuaisLote = [{ sku: '1000011', lote: 'L0', qtd: 3 }]
-    const p = prepararCarga(estoque, 'substituir', planilha, atuaisLote, { skus: new Set(['1000011']) })
+    const atuaisCod = [{ sku: '1000011', sistema: 'fr_ordering_tool', codigo: 'OT-11' }]
+    const p = prepararCarga(codigos, 'substituir', planilha, atuaisCod, { skus: new Set(['1000011']) })
     expect(p.faltandoChave).toEqual([])
     expect(p.linhas.map((l) => l.acao)).toEqual(['novo', 'ignorado'])
-    expect(p.payload).toEqual([{ sku: '1000011', lote: 'L1', qtd: 1200, validade: '2026-12-10' }])
-    expect(p.removidos).toEqual(atuaisLote)
+    expect(p.payload).toEqual([{ sku: '1000011', sistema: 'fr_item', codigo: 'FR-11' }])
+    expect(p.removidos).toEqual(atuaisCod)
+  })
+  it('número com ponto de milhar (padrão SAP Brasil)', () => {
+    expect(converter('1.200', col(hist, 'qtd'))).toEqual({ valor: 1200 })
   })
   it('sem coluna-chave não gera linhas', () => {
     const p = prepararCarga(produtos, 'atualizar', [['Preço'], [1]], atuais)
