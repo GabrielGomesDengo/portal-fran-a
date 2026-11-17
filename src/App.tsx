@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { Layout } from './components/Layout'
 import { RotaPerfil, RotaProtegida, RotaPublica } from './components/Rotas'
@@ -11,7 +11,7 @@ import { Produtos } from './telas/admin/Produtos'
 import { Parametros } from './telas/admin/Parametros'
 import { Usuarios } from './telas/admin/Usuarios'
 import { MinhaConta } from './telas/MinhaConta'
-import { Kpis } from './telas/Kpis'
+import { Indicadores } from './telas/Indicadores'
 
 export default function App() {
   return (
@@ -24,12 +24,13 @@ export default function App() {
               <Route path="/" element={<Inicio />} />
               <Route path="/pedidos/:id" element={<Pedido />} />
               <Route path="/conta" element={<MinhaConta />} />
+              <Route path="/indicadores" element={<Indicadores />} />
+              <Route path="/kpis" element={<Navigate to="/indicadores" replace />} />
               <Route element={<RotaPerfil perfis={['franca', 'supply', 'admin']} />}>
                 <Route path="/pedidos/novo" element={<NovoPedido />} />
               </Route>
               <Route element={<RotaPerfil perfis={['supply', 'pcp', 'operacoes', 'admin']} />}>
                 <Route path="/pedidos" element={<Pedidos />} />
-                <Route path="/kpis" element={<Kpis />} />
               </Route>
               <Route element={<RotaPerfil perfis={['admin', 'supply']} />}>
                 <Route path="/admin/produtos" element={<Produtos />} />

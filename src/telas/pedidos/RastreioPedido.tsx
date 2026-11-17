@@ -1,7 +1,12 @@
 import { Link } from 'react-router-dom'
-import { Rastreio } from '../../components/Ciclo'
+import { Marcos, Atualizacoes } from '../../components/RastreioDetalhado'
+import { CartoesAtendimento, ROTULO_FONTE, TabelaAtendimento } from '../../components/Atendimento'
+import { linhasAtendimento, resumirAtendimento } from '../../dominio/atendimento'
+import { montarRastreio } from '../../dominio/rastreio'
+import { totaisPallet, linhaPesoDe } from '../../dominio/pesos'
+import { hoje } from '../../lib/formatos'
 import { exportarPedidoExcel } from '../../documentos/exportarPedido'
-import { calcularCiclo, ETAPAS } from '../../dominio/ciclo'
+import { calcularCiclo } from '../../dominio/ciclo'
 import type { RegrasModal } from '../../dominio/modal'
 import { fmtData, fmtEur, fmtNum } from '../../lib/formatos'
 import { PainelFranca } from './PainelFranca'
@@ -9,10 +14,21 @@ import type { Dados } from './Pedido'
 
 /** Visão da França: rastreio do pedido, como um acompanhamento de entrega. Nada de telas internas. */
 export function RastreioPedido({ dados, novo, userId, regras, recarregar }: { dados: Dados; novo: boolean; userId: string; regras: RegrasModal; recarregar: () => void }) {
-  const { pedido, itens, produtos, eventos, alteracoes, plano, recebimentos } = dados
+  const { pedido, itens, produtos, eventos, alteracoes, plano, recebimentos, packing, invoice } = dados
   const prod = (sku: string) => produtos.find((p) => p.sku === sku)
   const ciclo = calcularCiclo(eventos, pedido.criado_em, pedido.data_embarque)
-  const etapa = ETAPAS.find((e) => e.chave === ciclo.etapaAtual)
+  const hj = hoje()
+  const nomeSku = (sku: string) => prod(sku)?.descricao_br ?? sku
+  const pallets = packing?.pallets.filter((p) => p.linhas.length > 0) ?? []
+  const pesoBruto = packing ? pallets.reduce((s, p) => s + totaisPallet(p.linhas.map((l) => linhaPesoDe(prod(l.sku), l.qtd, l.caixas)), packing.pl.tara_master_box_kg, packing.pl.tara_pallet_kg).bruto, 0) : null
+  const rastreio = montarRastreio({
+    criadoEm: pedido.criado_em, dataEmbarque: pedido.data_embarque, dataChegada: pedido.data_chegada_fr, foraPrazo: pedido.fora_prazo, antecedenciaDias: pedido.antecedencia_dias,
+    status: pedido.status, hoje: hj, eventos, plano, recebimentos, nome: nomeSku,
+    pallets: pallets.length || null, pesoBrutoKg: pesoBruto || null, invoiceNumero: invoice?.invoice.numero ?? null,
+  })
+  const atual = rastreio.marcos.find((m) => m.estado === 'atual')
+  const linhasAt = linhasAtendimento({ itens, plano, recebimentos, faturado: invoice ? invoice.linhas : null, precoCadastro: (s) => prod(s)?.preco_interco_eur ?? null })
+  const resumoAt = resumirAtendimento(linhasAt)
   const qtdFinal = (q: { qtd_aprovada: number | null; qtd_solicitada: number }) => q.qtd_aprovada ?? q.qtd_solicitada
   const total = itens.reduce((s, i) => s + (i.preco_eur ?? prod(i.sku)?.preco_interco_eur ?? 0) * qtdFinal(i), 0)
   const ajustado = itens.some((i) => i.qtd_aprovada !== null && i.qtd_aprovada !== i.qtd_solicitada)
@@ -31,8 +47,9 @@ export function RastreioPedido({ dados, novo, userId, regras, recarregar }: { da
       <header className="cartao flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="text-xs uppercase tracking-wide text-tinta-3">Pedido {pedido.numero}{pedido.po_franca ? ` · PO ${pedido.po_franca}` : ''}</div>
-          <h1 className="mt-1 text-2xl font-semibold">{ciclo.cancelado ? 'Pedido cancelado' : etapa?.rotulo ?? '—'}</h1>
-          {!ciclo.cancelado && etapa && <p className="mt-1 text-sm text-tinta-2">{etapa.descricao}</p>}
+          <h1 className="mt-1 text-2xl font-semibold">{ciclo.cancelado ? 'Pedido cancelado' : atual?.rotulo ?? 'Entregue na França'}</h1>
+          {!ciclo.cancelado && atual?.detalhe && <p className="mt-1 text-sm text-tinta-2">{atual.detalhe}</p>}
+          {!ciclo.cancelado && rastreio.atualizacoes.find((a) => a.tipo !== 'previsao') && <p className="mt-1 text-xs text-tinta-3">Última atualização: {rastreio.atualizacoes.find((a) => a.tipo !== 'previsao')!.titulo}</p>}
         </div>
         <button className="btn-secundario" onClick={() => exportarPedidoExcel(dados, { somenteResumo: true })}>⬇ Resumo em Excel</button>
       </header>
@@ -51,7 +68,7 @@ export function RastreioPedido({ dados, novo, userId, regras, recarregar }: { da
       <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
         <div className="space-y-3">
           <h2 className="font-semibold">Acompanhamento</h2>
-          <Rastreio pedido={pedido} eventos={eventos} />
+          <Marcos marcos={rastreio.marcos} />
           {mostrarProducao && (
             <div className="cartao">
               <div className="flex items-baseline justify-between"><span className="text-sm font-semibold">Produção no estoque</span><span className="text-lg font-semibold">{Math.round(pctPronto! * 100)}%</span></div>
@@ -59,9 +76,10 @@ export function RastreioPedido({ dados, novo, userId, regras, recarregar }: { da
               <p className="mt-1 text-xs text-tinta-3">{fmtNum(pronto)} de {fmtNum(planejado)} unidades/kg prontas.</p>
             </div>
           )}
+          <Atualizacoes itens={rastreio.atualizacoes} hoje={hj} />
         </div>
 
-        <section className="space-y-3">
+        <section className="min-w-0 space-y-3">
           <h2 className="font-semibold">Produtos {ajustado && <span className="pill ml-1 bg-marca/30">com ajustes do Supply</span>}</h2>
           <div className="cartao overflow-x-auto p-0">
             <table className="grade">
@@ -83,6 +101,13 @@ export function RastreioPedido({ dados, novo, userId, regras, recarregar }: { da
           <p className="text-xs text-tinta-3">Valores aproximados. O valor final é o da invoice comercial emitida no embarque.</p>
         </section>
       </div>
+      {resumoAt.fonte === 'nota' && (
+        <section className="space-y-3">
+          <h2 className="font-semibold">Pedido × atendimento <span className="text-sm font-normal text-tinta-3">· {ROTULO_FONTE[resumoAt.fonte]}</span></h2>
+          <CartoesAtendimento r={resumoAt} />
+          <div className="cartao p-0"><TabelaAtendimento linhas={linhasAt} nome={nomeSku} /></div>
+        </section>
+      )}
     </div>
   )
 }

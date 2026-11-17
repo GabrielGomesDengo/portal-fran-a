@@ -5,12 +5,12 @@ import { ROTULO_PERFIL, type Perfil } from '../tipos/dominio'
 import { Logo } from './Logo'
 
 const MENU: Record<Perfil, { para: string; rotulo: string }[]> = {
-  franca: [{ para: '/', rotulo: 'Meus pedidos' }, { para: '/pedidos/novo', rotulo: 'Novo pedido' }],
-  supply: [{ para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/kpis', rotulo: 'KPIs' }, { para: '/admin/produtos', rotulo: 'Portfólio' }],
-  pcp: [{ para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }],
-  operacoes: [{ para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/kpis', rotulo: 'KPIs' }],
+  franca: [{ para: '/', rotulo: 'Meus pedidos' }, { para: '/pedidos/novo', rotulo: 'Novo pedido' }, { para: '/indicadores', rotulo: 'Indicadores' }],
+  supply: [{ para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/indicadores', rotulo: 'Indicadores' }, { para: '/admin/produtos', rotulo: 'Portfólio' }],
+  pcp: [{ para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/indicadores', rotulo: 'Indicadores' }],
+  operacoes: [{ para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/indicadores', rotulo: 'Indicadores' }],
   admin: [
-    { para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/pedidos/novo', rotulo: 'Novo pedido' }, { para: '/kpis', rotulo: 'KPIs' },
+    { para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/pedidos/novo', rotulo: 'Novo pedido' }, { para: '/indicadores', rotulo: 'Indicadores' },
     { para: '/admin/produtos', rotulo: 'Portfólio' }, { para: '/admin/parametros', rotulo: 'Parâmetros' }, { para: '/admin/usuarios', rotulo: 'Usuários' },
   ],
 }

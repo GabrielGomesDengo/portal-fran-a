@@ -19,6 +19,8 @@ import { listarPlano, type LotePlano } from '../../dados/plano'
 import { carregarParametros } from '../../dados/parametros'
 import { regrasDoModal } from '../../dominio/modal'
 import { IndicadorCiclo, SeloPrazo } from '../../components/Ciclo'
+import { CartoesAtendimento, ROTULO_FONTE, TabelaAtendimento } from '../../components/Atendimento'
+import { linhasAtendimento, resumirAtendimento } from '../../dominio/atendimento'
 import { RastreioPedido } from './RastreioPedido'
 import type { FaixaContractDate } from '../../dominio/contractDate'
 import { ROTULO_STATUS, type Pedido as TPedido, type PedidoItem, type Produto, type StatusPedido } from '../../tipos/dominio'
@@ -89,6 +91,17 @@ export function Pedido() {
       </div>
       <LinhaDoTempo status={pedido.status} />
       <IndicadorCiclo pedido={pedido} eventos={eventos} minimo={regras.antecedenciaPedidoDias} />
+      {(() => {
+        const ls = linhasAtendimento({ itens, plano, recebimentos, faturado: invoice ? invoice.linhas : null, precoCadastro: (s) => prod(s)?.preco_interco_eur ?? null })
+        const r = resumirAtendimento(ls)
+        if (r.fonte === 'pendente') return null
+        return (
+          <details className="cartao space-y-3" open={['invoice_gerada', 'concluido'].includes(pedido.status)}>
+            <summary className="cursor-pointer font-semibold">Pedido × atendimento <span className="text-sm font-normal text-tinta-3">· {ROTULO_FONTE[r.fonte]}</span></summary>
+            <div className="mt-3 space-y-3"><CartoesAtendimento r={r} /><TabelaAtendimento linhas={ls} nome={(s) => prod(s)?.descricao_br ?? s} interno /></div>
+          </details>
+        )
+      })()}
 
       {ehSupply && pedido.status === 'enviado' && (
         <div className="cartao flex items-center justify-between gap-3 border-marca">
