@@ -4,6 +4,7 @@
 // chegaram ao estoque e dos documentos. Função pura.
 // =============================================================
 import type { StatusPedido } from '../tipos/dominio'
+import { t, tp } from '../i18n/idioma'
 
 export type EstadoMarco = 'feito' | 'atual' | 'futuro'
 export type Marco = { chave: string; rotulo: string; data: string | null; previsto?: boolean; detalhe?: string; estado: EstadoMarco }
@@ -29,7 +30,6 @@ export type EntradaRastreio = {
 const ORDEM: StatusPedido[] = ['rascunho', 'enviado', 'em_validacao_supply', 'ajustado_supply', 'recusado_supply', 'aguardando_fr', 'aprovado', 'em_planejamento_pcp', 'plano_concluido', 'em_recebimento', 'packing_list', 'invoice_gerada', 'concluido']
 const nivel = (s: StatusPedido) => ORDEM.indexOf(s)
 const dt = (iso: string) => iso.slice(0, 10)
-const plural = (n: number, s: string, p = s + 's') => `${n} ${n === 1 ? s : p}`
 
 export function montarRastreio(e: EntradaRastreio): { marcos: Marco[]; atualizacoes: Atualizacao[]; resumoAtual: string } {
   const ev = [...e.eventos].sort((a, b) => a.criado_em.localeCompare(b.criado_em))
@@ -48,18 +48,18 @@ export function montarRastreio(e: EntradaRastreio): { marcos: Marco[]; atualizac
   const inicioProducao = datasProd.find((d) => d <= e.hoje) ?? (primeiraRec ?? null)
 
   const marcos: Omit<Marco, 'estado'>[] = [
-    { chave: 'enviado', rotulo: 'Pedido enviado', data: e.criadoEm, detalhe: e.foraPrazo ? `Colocado com ${e.antecedenciaDias} dias de antecedência` : undefined },
-    { chave: 'analise', rotulo: 'Em análise pelo Supply', data: primeiro('em_validacao_supply') },
-    { chave: 'confirmado', rotulo: 'Pedido confirmado', data: primeiro('aprovado') },
-    { chave: 'planejado', rotulo: 'Produção planejada', data: primeiro('plano_concluido'),
-      detalhe: datasProd.length ? `Produção entre ${fmt(datasProd[0])} e ${fmt(datasProd[datasProd.length - 1])}` : undefined },
-    { chave: 'producao', rotulo: 'Em produção', data: n >= nivel('plano_concluido') ? inicioProducao : null,
-      detalhe: planejado > 0 && n >= nivel('plano_concluido') ? `${plural(skusNoEstoque.size, 'produto')} de ${skusPlano.size} no estoque · ${Math.round(Math.min(1, recebido / planejado) * 100)}% do volume` : undefined },
-    { chave: 'concluida', rotulo: 'Produção concluída', data: primeiro((x) => x.para_status === 'packing_list') },
-    { chave: 'documentos', rotulo: 'Pallets e documentos', data: primeiro('invoice_gerada') ?? primeiro((x) => x.para_status === 'packing_list' && (x.motivo ?? '').startsWith('Packing list')),
-      detalhe: [e.pallets ? plural(e.pallets, 'pallet') : null, e.pesoBrutoKg ? `${Math.round(e.pesoBrutoKg)} kg brutos` : null, e.invoiceNumero ? `invoice ${e.invoiceNumero}` : null].filter(Boolean).join(' · ') || undefined },
-    { chave: 'embarcado', rotulo: 'Liberado para embarque', data: primeiro('concluido') ?? e.dataEmbarque, previsto: !primeiro('concluido') },
-    { chave: 'chegada', rotulo: 'Chegada na França', data: e.dataChegada, previsto: !(e.status === 'concluido' && e.dataChegada <= e.hoje) },
+    { chave: 'enviado', rotulo: t('Pedido enviado'), data: e.criadoEm, detalhe: e.foraPrazo ? t('Colocado com {n} dias de antecedência', { n: e.antecedenciaDias ?? 0 }) : undefined },
+    { chave: 'analise', rotulo: t('Em análise pelo Supply'), data: primeiro('em_validacao_supply') },
+    { chave: 'confirmado', rotulo: t('Pedido confirmado'), data: primeiro('aprovado') },
+    { chave: 'planejado', rotulo: t('Produção planejada'), data: primeiro('plano_concluido'),
+      detalhe: datasProd.length ? t('Produção entre {a} e {b}', { a: fmt(datasProd[0]), b: fmt(datasProd[datasProd.length - 1]) }) : undefined },
+    { chave: 'producao', rotulo: t('Em produção'), data: n >= nivel('plano_concluido') ? inicioProducao : null,
+      detalhe: planejado > 0 && n >= nivel('plano_concluido') ? t('{a} de {b} no estoque · {p}% do volume', { a: tp(skusNoEstoque.size, '{n} produto', '{n} produtos'), b: skusPlano.size, p: Math.round(Math.min(1, recebido / planejado) * 100) }) : undefined },
+    { chave: 'concluida', rotulo: t('Produção concluída'), data: primeiro((x) => x.para_status === 'packing_list') },
+    { chave: 'documentos', rotulo: t('Pallets e documentos'), data: primeiro('invoice_gerada') ?? primeiro((x) => x.para_status === 'packing_list' && (x.motivo ?? '').startsWith('Packing list')),
+      detalhe: [e.pallets ? tp(e.pallets, '{n} pallet', '{n} pallets') : null, e.pesoBrutoKg ? t('{n} kg brutos', { n: Math.round(e.pesoBrutoKg) }) : null, e.invoiceNumero ? `invoice ${e.invoiceNumero}` : null].filter(Boolean).join(' · ') || undefined },
+    { chave: 'embarcado', rotulo: t('Liberado para embarque'), data: primeiro('concluido') ?? e.dataEmbarque, previsto: !primeiro('concluido') },
+    { chave: 'chegada', rotulo: t('Chegada na França'), data: e.dataChegada, previsto: !(e.status === 'concluido' && e.dataChegada <= e.hoje) },
   ]
   // Etapa atual = primeira não concluída
   const concluido: Record<string, boolean> = {
@@ -85,30 +85,31 @@ export function montarRastreio(e: EntradaRastreio): { marcos: Marco[]; atualizac
   const at: Atualizacao[] = []
   let anterior: StatusPedido | null = null
   let planoDefinido = false
+  const jaTem = { pallets: false, invoice: false }
   for (const x of ev) {
     const m = x.motivo ?? ''
     switch (x.para_status) {
-      case 'enviado': at.push({ data: x.criado_em, tipo: 'status', titulo: 'Pedido enviado à Dengo Brasil', detalhe: e.foraPrazo ? `Fora do prazo recomendado (${e.antecedenciaDias} dias de antecedência); segue para aprovação especial.` : undefined }); break
-      case 'em_validacao_supply': at.push({ data: x.criado_em, tipo: 'status', titulo: anterior && nivel(anterior) >= nivel('aprovado') ? 'Pedido reaberto para revisão do Supply' : 'Supply iniciou a análise do pedido', detalhe: m || undefined }); break
-      case 'aguardando_fr': at.push({ data: x.criado_em, tipo: 'alerta', titulo: 'Supply ajustou o pedido: aguardando a sua resposta', detalhe: m || undefined }); break
-      case 'recusado_supply': at.push({ data: x.criado_em, tipo: 'alerta', titulo: 'Pedido recusado pelo Supply', detalhe: m || undefined }); break
-      case 'aprovado': at.push({ data: x.criado_em, tipo: 'status', titulo: anterior === 'aguardando_fr' ? 'Você aceitou os ajustes: pedido confirmado' : 'Pedido confirmado pelo Supply' }); break
-      case 'em_planejamento_pcp': at.push({ data: x.criado_em, tipo: 'producao', titulo: 'Planejamento da produção iniciado' }); break
+      case 'enviado': at.push({ data: x.criado_em, tipo: 'status', titulo: t('Pedido enviado à Dengo Brasil'), detalhe: e.foraPrazo ? t('Fora do prazo recomendado ({n} dias de antecedência); segue para aprovação especial.', { n: e.antecedenciaDias ?? 0 }) : undefined }); break
+      case 'em_validacao_supply': at.push({ data: x.criado_em, tipo: 'status', titulo: anterior && nivel(anterior) >= nivel('aprovado') ? t('Pedido reaberto para revisão do Supply') : t('Supply iniciou a análise do pedido'), detalhe: m || undefined }); break
+      case 'aguardando_fr': at.push({ data: x.criado_em, tipo: 'alerta', titulo: t('Supply ajustou o pedido: aguardando a sua resposta'), detalhe: m || undefined }); break
+      case 'recusado_supply': at.push({ data: x.criado_em, tipo: 'alerta', titulo: t('Pedido recusado pelo Supply'), detalhe: m || undefined }); break
+      case 'aprovado': at.push({ data: x.criado_em, tipo: 'status', titulo: anterior === 'aguardando_fr' ? t('Você aceitou os ajustes: pedido confirmado') : t('Pedido confirmado pelo Supply') }); break
+      case 'em_planejamento_pcp': at.push({ data: x.criado_em, tipo: 'producao', titulo: t('Planejamento da produção iniciado') }); break
       case 'plano_concluido':
-        if (!planoDefinido && x.para_status !== anterior) { planoDefinido = true; at.push({ data: x.criado_em, tipo: 'producao', titulo: 'Plano de produção definido', detalhe: datasProd.length ? `${plural(new Set(prod.map((l) => l.sku)).size, 'produto')} programado(s) entre ${fmt(datasProd[0])} e ${fmt(datasProd[datasProd.length - 1])}.` : undefined }) }
-        else if (m.startsWith('Plano de produção atualizado')) at.push({ data: x.criado_em, tipo: 'producao', titulo: 'Plano de produção atualizado pelo PCP' })
+        if (!planoDefinido && x.para_status !== anterior) { planoDefinido = true; at.push({ data: x.criado_em, tipo: 'producao', titulo: t('Plano de produção definido'), detalhe: datasProd.length ? t('{q} programado(s) entre {a} e {b}.', { q: tp(new Set(prod.map((l) => l.sku)).size, '{n} produto', '{n} produtos'), a: fmt(datasProd[0]), b: fmt(datasProd[datasProd.length - 1]) }) : undefined }) }
+        else if (m.startsWith('Plano de produção atualizado')) at.push({ data: x.criado_em, tipo: 'producao', titulo: t('Plano de produção atualizado pelo PCP') })
         break
-      case 'em_recebimento': if (anterior !== 'em_recebimento') at.push({ data: x.criado_em, tipo: 'estoque', titulo: 'Produtos começaram a chegar ao estoque' }); break
+      case 'em_recebimento': if (anterior !== 'em_recebimento') at.push({ data: x.criado_em, tipo: 'estoque', titulo: t('Produtos começaram a chegar ao estoque') }); break
       case 'packing_list':
-        if (m === 'Recebimento concluído') at.push({ data: x.criado_em, tipo: 'estoque', titulo: 'Produção concluída: todos os lotes conferidos no estoque' })
-        else if (m.startsWith('Packing list') && !at.some((a) => a.titulo.startsWith('Montagem dos pallets'))) at.push({ data: x.criado_em, tipo: 'documento', titulo: 'Montagem dos pallets iniciada' })
+        if (m === 'Recebimento concluído') at.push({ data: x.criado_em, tipo: 'estoque', titulo: t('Produção concluída: todos os lotes conferidos no estoque') })
+        else if (m.startsWith('Packing list') && !jaTem.pallets) { jaTem.pallets = true; at.push({ data: x.criado_em, tipo: 'documento', titulo: t('Montagem dos pallets iniciada') }) }
         break
       case 'invoice_gerada':
-        if (m.startsWith('Invoice')) { if (!at.some((a) => a.titulo.startsWith('Invoice comercial'))) at.push({ data: x.criado_em, tipo: 'documento', titulo: `Invoice comercial ${e.invoiceNumero ?? ''} emitida`.replace('  ', ' ') }) }
-        else at.push({ data: x.criado_em, tipo: 'documento', titulo: 'Packing list concluído', detalhe: [e.pallets ? plural(e.pallets, 'pallet') : null, e.pesoBrutoKg ? `${Math.round(e.pesoBrutoKg)} kg brutos` : null].filter(Boolean).join(' · ') || undefined })
+        if (m.startsWith('Invoice')) { if (!jaTem.invoice) { jaTem.invoice = true; at.push({ data: x.criado_em, tipo: 'documento', titulo: t('Invoice comercial {n} emitida', { n: e.invoiceNumero ?? '' }).replace('  ', ' ') }) } }
+        else at.push({ data: x.criado_em, tipo: 'documento', titulo: t('Packing list concluído'), detalhe: [e.pallets ? tp(e.pallets, '{n} pallet', '{n} pallets') : null, e.pesoBrutoKg ? t('{n} kg brutos', { n: Math.round(e.pesoBrutoKg) }) : null].filter(Boolean).join(' · ') || undefined })
         break
-      case 'concluido': at.push({ data: x.criado_em, tipo: 'status', titulo: 'Documentos emitidos: carga liberada para embarque' }); break
-      case 'cancelado': at.push({ data: x.criado_em, tipo: 'alerta', titulo: 'Pedido cancelado', detalhe: m || undefined }); break
+      case 'concluido': at.push({ data: x.criado_em, tipo: 'status', titulo: t('Documentos emitidos: carga liberada para embarque') }); break
+      case 'cancelado': at.push({ data: x.criado_em, tipo: 'alerta', titulo: t('Pedido cancelado'), detalhe: m || undefined }); break
     }
     anterior = x.para_status
   }
@@ -117,22 +118,22 @@ export function montarRastreio(e: EntradaRastreio): { marcos: Marco[]; atualizac
   for (const r of rec) { const l = porDia.get(r.data_recebimento) ?? []; l.push(r); porDia.set(r.data_recebimento, l) }
   for (const [dia, rs] of porDia) {
     const nomes = [...new Set(rs.map((r) => e.nome(r.sku)))]
-    at.push({ data: `${dia}T12:00:00`, tipo: 'estoque', titulo: `${plural(rs.length, 'lote')} no estoque`, detalhe: nomes.slice(0, 3).join(', ') + (nomes.length > 3 ? ` e mais ${nomes.length - 3}` : '') })
+    at.push({ data: `${dia}T12:00:00`, tipo: 'estoque', titulo: tp(rs.length, '{n} lote no estoque', '{n} lotes no estoque'), detalhe: nomes.slice(0, 3).join(', ') + (nomes.length > 3 ? ` ${t('e mais {n}', { n: nomes.length - 3 })}` : '') })
   }
   // Produção programada (futuro) e previsões
   if (!cancelado && n < nivel('packing_list')) {
     const futuras = [...new Set(datasProd.filter((d) => d > e.hoje))]
     for (const d of futuras.slice(0, 4)) {
       const nomes = [...new Set(prod.filter((l) => l.data_producao === d).map((l) => e.nome(l.sku)))]
-      at.push({ data: `${d}T08:00:00`, tipo: 'previsao', titulo: 'Produção programada', detalhe: nomes.slice(0, 3).join(', ') + (nomes.length > 3 ? ` e mais ${nomes.length - 3}` : '') })
+      at.push({ data: `${d}T08:00:00`, tipo: 'previsao', titulo: t('Produção programada'), detalhe: nomes.slice(0, 3).join(', ') + (nomes.length > 3 ? ` ${t('e mais {n}', { n: nomes.length - 3 })}` : '') })
     }
   }
-  if (!cancelado && n < nivel('concluido')) at.push({ data: `${e.dataEmbarque}T09:00:00`, tipo: 'previsao', titulo: 'Embarque previsto' })
-  if (!cancelado) at.push({ data: `${e.dataChegada}T09:00:00`, tipo: 'previsao', titulo: e.status === 'concluido' && e.dataChegada <= e.hoje ? 'Chegada na França' : 'Chegada prevista na França' })
+  if (!cancelado && n < nivel('concluido')) at.push({ data: `${e.dataEmbarque}T09:00:00`, tipo: 'previsao', titulo: t('Embarque previsto') })
+  if (!cancelado) at.push({ data: `${e.dataChegada}T09:00:00`, tipo: 'previsao', titulo: e.status === 'concluido' && e.dataChegada <= e.hoje ? t('Chegada na França') : t('Chegada prevista na França') })
   at.sort((a, b) => b.data.localeCompare(a.data))
 
   const atual = comEstado.find((m) => m.estado === 'atual')
-  const resumoAtual = cancelado ? 'Pedido cancelado' : atual ? `${atual.rotulo}${atual.detalhe ? ` · ${atual.detalhe}` : ''}` : 'Chegou na França'
+  const resumoAtual = cancelado ? t('Pedido cancelado') : atual ? `${atual.rotulo}${atual.detalhe ? ` · ${atual.detalhe}` : ''}` : t('Chegou na França')
   return { marcos: comEstado, atualizacoes: at, resumoAtual }
 }
 

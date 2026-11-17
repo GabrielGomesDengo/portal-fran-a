@@ -9,6 +9,7 @@ import { ProgressoMini, SeloPrazo } from '../components/Ciclo'
 import { ROTULO_STATUS, type Pedido, type PedidoItem, type Perfil, type StatusPedido } from '../tipos/dominio'
 import { fmtData, fmtEur, fmtNum } from '../lib/formatos'
 import { Carregando, Erro } from '../components/Carregando'
+import { t } from '../i18n/idioma'
 
 /** Quais status pedem ação de cada perfil. */
 const MINHA_VEZ: Record<Perfil, StatusPedido[]> = {
@@ -45,20 +46,20 @@ function InicioFranca({ base, nome }: { base: Base; nome: string }) {
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div><h1 className="text-2xl font-semibold">Bonjour, {nome.split(' ')[0]}</h1><p className="text-sm text-tinta-2">Acompanhe seus pedidos à Dengo Brasil.</p></div>
-        <Link to="/pedidos/novo" className="btn-primario px-5 py-3">+ Novo pedido</Link>
+        <div><h1 className="text-2xl font-semibold">{t('Olá, {nome}', { nome: nome.split(' ')[0] })}</h1><p className="text-sm text-tinta-2">{t('Acompanhe seus pedidos à Dengo Brasil.')}</p></div>
+        <Link to="/pedidos/novo" className="btn-primario px-5 py-3">+ {t('Novo pedido')}</Link>
       </div>
       {acao.length > 0 && (
-        <div className="rounded-lg border border-marca bg-marca/15 p-3 text-sm"><b>{acao.length} pedido(s) precisam da sua resposta:</b> {acao.map((p) => <Link key={p.id} className="ml-2 underline" to={`/pedidos/${p.id}`}>{p.numero}</Link>)}</div>
+        <div className="rounded-lg border border-marca bg-marca/15 p-3 text-sm"><b>{t('{n} pedido(s) precisam da sua resposta:', { n: acao.length })}</b> {acao.map((p) => <Link key={p.id} className="ml-2 underline" to={`/pedidos/${p.id}`}>{p.numero}</Link>)}</div>
       )}
       <section className="space-y-3">
-        <h2 className="font-semibold">Em andamento ({ativos.length})</h2>
-        {ativos.length === 0 && <div className="cartao text-center text-sm text-tinta-3">Nenhum pedido em andamento. <Link to="/pedidos/novo" className="underline">Fazer um pedido</Link></div>}
+        <h2 className="font-semibold">{t('Em andamento')} ({ativos.length})</h2>
+        {ativos.length === 0 && <div className="cartao text-center text-sm text-tinta-3">{t('Nenhum pedido em andamento.')} <Link to="/pedidos/novo" className="underline">{t('Fazer um pedido')}</Link></div>}
         <div className="grid gap-3 md:grid-cols-2">{ativos.map((p) => <CartaoPedido key={p.id} p={p} base={base} />)}</div>
       </section>
       {historico.length > 0 && (
         <section className="space-y-2">
-          <h2 className="font-semibold">Histórico</h2>
+          <h2 className="font-semibold">{t('Histórico')}</h2>
           <div className="grid gap-3 md:grid-cols-2">{historico.map((p) => <CartaoPedido key={p.id} p={p} base={base} />)}</div>
         </section>
       )}
@@ -74,16 +75,16 @@ function CartaoPedido({ p, base }: { p: Pedido; base: Base }) {
   return (
     <Link to={`/pedidos/${p.id}`} className={`cartao block space-y-3 transition hover:shadow-md ${precisa ? 'border-marca' : ''}`}>
       <div className="flex items-start justify-between gap-2">
-        <div><div className="font-mono text-xs text-tinta-3">{p.numero}{p.po_franca ? ` · ${p.po_franca}` : ''}</div><div className="text-lg font-semibold">{c.cancelado ? 'Cancelado' : etapa?.rotulo}</div></div>
-        <span className="pill bg-tinta text-white">{p.modal === 'maritimo' ? '⚓︎ Marítimo' : '✈︎ Aéreo'}</span>
+        <div><div className="font-mono text-xs text-tinta-3">{p.numero}{p.po_franca ? ` · ${p.po_franca}` : ''}</div><div className="text-lg font-semibold">{c.cancelado ? t('Cancelado') : t(etapa?.rotulo ?? '')}</div></div>
+        <span className="pill bg-tinta text-white">{p.modal === 'maritimo' ? `⚓︎ ${t('Marítimo')}` : `✈︎ ${t('Aéreo')}`}</span>
       </div>
       <ProgressoMini pedido={p} eventos={ev} />
       <div className="flex flex-wrap justify-between gap-2 text-sm">
-        <span><span className="text-tinta-3">Embarque</span> {fmtData(p.data_embarque)}</span>
-        <span><span className="text-tinta-3">Chegada</span> {fmtData(p.data_chegada_fr)}</span>
+        <span><span className="text-tinta-3">{t('Embarque')}</span> {fmtData(p.data_embarque)}</span>
+        <span><span className="text-tinta-3">{t('Chegada')}</span> {fmtData(p.data_chegada_fr)}</span>
         <span className="font-semibold">{fmtEur(totalPedido(p, base.itens))}</span>
       </div>
-      {precisa && <div className="text-sm font-semibold text-tinta">Responder ao Supply →</div>}
+      {precisa && <div className="text-sm font-semibold text-tinta">{t('Responder ao Supply')} →</div>}
     </Link>
   )
 }

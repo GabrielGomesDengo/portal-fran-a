@@ -12,9 +12,15 @@ import { Parametros } from './telas/admin/Parametros'
 import { Usuarios } from './telas/admin/Usuarios'
 import { MinhaConta } from './telas/MinhaConta'
 import { Indicadores } from './telas/Indicadores'
+import { useState } from 'react'
+import { IdiomaContext } from './i18n/contexto'
+import { definirIdioma, idiomaAtual, type Idioma } from './i18n/idioma'
 
 export default function App() {
+  const [idioma, setIdioma] = useState<Idioma>(idiomaAtual())
+  const trocar = (i: Idioma) => { definirIdioma(i); setIdioma(i) }
   return (
+    <IdiomaContext.Provider value={{ idioma, trocar }}>
     <AuthProvider>
       <BrowserRouter>
         <Routes>
@@ -44,5 +50,6 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </IdiomaContext.Provider>
   )
 }

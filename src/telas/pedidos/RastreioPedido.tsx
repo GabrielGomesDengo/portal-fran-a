@@ -11,6 +11,7 @@ import type { RegrasModal } from '../../dominio/modal'
 import { fmtData, fmtEur, fmtNum } from '../../lib/formatos'
 import { PainelFranca } from './PainelFranca'
 import type { Dados } from './Pedido'
+import { t, tp, nomeProduto } from '../../i18n/idioma'
 
 /** Visão da França: rastreio do pedido, como um acompanhamento de entrega. Nada de telas internas. */
 export function RastreioPedido({ dados, novo, userId, regras, recarregar }: { dados: Dados; novo: boolean; userId: string; regras: RegrasModal; recarregar: () => void }) {
@@ -18,7 +19,7 @@ export function RastreioPedido({ dados, novo, userId, regras, recarregar }: { da
   const prod = (sku: string) => produtos.find((p) => p.sku === sku)
   const ciclo = calcularCiclo(eventos, pedido.criado_em, pedido.data_embarque)
   const hj = hoje()
-  const nomeSku = (sku: string) => prod(sku)?.descricao_br ?? sku
+  const nomeSku = (sku: string) => nomeProduto(prod(sku), sku)
   const pallets = packing?.pallets.filter((p) => p.linhas.length > 0) ?? []
   const pesoBruto = packing ? pallets.reduce((s, p) => s + totaisPallet(p.linhas.map((l) => linhaPesoDe(prod(l.sku), l.qtd, l.caixas)), packing.pl.tara_master_box_kg, packing.pl.tara_pallet_kg).bruto, 0) : null
   const rastreio = montarRastreio({
@@ -41,69 +42,69 @@ export function RastreioPedido({ dados, novo, userId, regras, recarregar }: { da
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      {novo && <p className="surgir rounded-lg bg-ok/10 p-4 text-sm text-ok"><b>Pedido enviado!</b> O time de Supply da Dengo Brasil vai analisar e você acompanha cada etapa por aqui.</p>}
-      <Link to="/" className="text-sm text-tinta-3 hover:underline">← Meus pedidos</Link>
+      {novo && <p className="surgir rounded-lg bg-ok/10 p-4 text-sm text-ok"><b>{t('Pedido enviado!')}</b> {t('O time de Supply da Dengo Brasil vai analisar e você acompanha cada etapa por aqui.')}</p>}
+      <Link to="/" className="text-sm text-tinta-3 hover:underline">← {t('Meus pedidos')}</Link>
 
       <header className="cartao flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="text-xs uppercase tracking-wide text-tinta-3">Pedido {pedido.numero}{pedido.po_franca ? ` · PO ${pedido.po_franca}` : ''}</div>
-          <h1 className="mt-1 text-2xl font-semibold">{ciclo.cancelado ? 'Pedido cancelado' : atual?.rotulo ?? 'Entregue na França'}</h1>
+          <div className="text-xs uppercase tracking-wide text-tinta-3">{t('Pedido')} {pedido.numero}{pedido.po_franca ? ` · PO ${pedido.po_franca}` : ''}</div>
+          <h1 className="mt-1 text-2xl font-semibold">{ciclo.cancelado ? t('Pedido cancelado') : atual?.rotulo ?? t('Entregue na França')}</h1>
           {!ciclo.cancelado && atual?.detalhe && <p className="mt-1 text-sm text-tinta-2">{atual.detalhe}</p>}
-          {!ciclo.cancelado && rastreio.atualizacoes.find((a) => a.tipo !== 'previsao') && <p className="mt-1 text-xs text-tinta-3">Última atualização: {rastreio.atualizacoes.find((a) => a.tipo !== 'previsao')!.titulo}</p>}
+          {!ciclo.cancelado && rastreio.atualizacoes.find((a) => a.tipo !== 'previsao') && <p className="mt-1 text-xs text-tinta-3">{t('Última atualização')}: {rastreio.atualizacoes.find((a) => a.tipo !== 'previsao')!.titulo}</p>}
         </div>
-        <button className="btn-secundario" onClick={() => exportarPedidoExcel(dados, { somenteResumo: true })}>⬇ Resumo em Excel</button>
+        <button className="btn-secundario" onClick={() => exportarPedidoExcel(dados, { somenteResumo: true })}>⬇ {t('Resumo em Excel')}</button>
       </header>
 
       {precisaAcao && <PainelFranca pedido={pedido} itens={itens} produtos={produtos} alteracoes={alteracoes} userId={userId} aoConcluir={recarregar}
         motivoRecusa={[...eventos].reverse().find((e) => e.para_status === 'recusado_supply')?.motivo ?? null} />}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Cartao rotulo="Modal" valor={regras.rotulo} detalhe={regras.modal === 'maritimo' ? `${Math.round(regras.transitDias / 7)} semanas de trânsito` : `${regras.transitDias} dias de trânsito`} />
-        <Cartao rotulo="Embarque previsto" valor={fmtData(pedido.data_embarque)} detalhe={!ciclo.cancelado && ciclo.etapaAtual !== 'embarcado' && ciclo.diasAteEmbarque >= 0 ? `em ${ciclo.diasAteEmbarque} dias` : undefined} />
-        <Cartao rotulo="Chegada prevista na França" valor={fmtData(pedido.data_chegada_fr)} />
-        <Cartao rotulo="Valor estimado" valor={fmtEur(total)} detalhe={`${itens.length} produtos`} />
+        <Cartao rotulo={t('Modal')} valor={t(regras.rotulo)} detalhe={regras.modal === 'maritimo' ? t('{n} semanas de trânsito', { n: Math.round(regras.transitDias / 7) }) : t('{n} dias de trânsito', { n: regras.transitDias })} />
+        <Cartao rotulo={t('Embarque previsto')} valor={fmtData(pedido.data_embarque)} detalhe={!ciclo.cancelado && ciclo.etapaAtual !== 'embarcado' && ciclo.diasAteEmbarque >= 0 ? t('em {n} dias', { n: ciclo.diasAteEmbarque }) : undefined} />
+        <Cartao rotulo={t('Chegada prevista na França')} valor={fmtData(pedido.data_chegada_fr)} />
+        <Cartao rotulo={t('Valor estimado')} valor={fmtEur(total)} detalhe={tp(itens.length, '{n} produto', '{n} produtos')} />
       </div>
-      {pedido.fora_prazo && <p className="rounded-lg bg-alerta/10 p-3 text-sm text-alerta">Pedido colocado com {pedido.antecedencia_dias} dias de antecedência (o recomendado para {regras.rotulo.toLowerCase()} é {regras.antecedenciaPedidoDias}). Ele seguiu com aprovação especial do Supply.</p>}
+      {pedido.fora_prazo && <p className="rounded-lg bg-alerta/10 p-3 text-sm text-alerta">{t('Pedido colocado com {n} dias de antecedência (o recomendado para {modal} é {min}). Ele seguiu com aprovação especial do Supply.', { n: pedido.antecedencia_dias ?? 0, modal: t(regras.rotulo).toLowerCase(), min: regras.antecedenciaPedidoDias })}</p>}
 
       <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
         <div className="space-y-3">
-          <h2 className="font-semibold">Acompanhamento</h2>
+          <h2 className="font-semibold">{t('Acompanhamento')}</h2>
           <Marcos marcos={rastreio.marcos} />
           {mostrarProducao && (
             <div className="cartao">
-              <div className="flex items-baseline justify-between"><span className="text-sm font-semibold">Produção no estoque</span><span className="text-lg font-semibold">{Math.round(pctPronto! * 100)}%</span></div>
+              <div className="flex items-baseline justify-between"><span className="text-sm font-semibold">{t('Produção no estoque')}</span><span className="text-lg font-semibold">{Math.round(pctPronto! * 100)}%</span></div>
               <div className="mt-2 h-2 rounded-full bg-linha"><div className="h-2 rounded-full bg-ok transition-all" style={{ width: `${pctPronto! * 100}%` }} /></div>
-              <p className="mt-1 text-xs text-tinta-3">{fmtNum(pronto)} de {fmtNum(planejado)} unidades/kg prontas.</p>
+              <p className="mt-1 text-xs text-tinta-3">{t('{a} de {b} unidades/kg prontas.', { a: fmtNum(pronto), b: fmtNum(planejado) })}</p>
             </div>
           )}
           <Atualizacoes itens={rastreio.atualizacoes} hoje={hj} />
         </div>
 
         <section className="min-w-0 space-y-3">
-          <h2 className="font-semibold">Produtos {ajustado && <span className="pill ml-1 bg-marca/30">com ajustes do Supply</span>}</h2>
+          <h2 className="font-semibold">{t('Produtos')} {ajustado && <span className="pill ml-1 bg-marca/30">{t('com ajustes do Supply')}</span>}</h2>
           <div className="cartao overflow-x-auto p-0">
             <table className="grade">
-              <thead><tr><th>Produto</th><th className="text-right">Pedido</th><th className="text-right">Confirmado</th><th className="text-right">Preço un.</th><th className="text-right">Total</th></tr></thead>
+              <thead><tr><th>{t('Produto')}</th><th className="text-right">{t('Pedido')}</th><th className="text-right">{t('Confirmado')}</th><th className="text-right">{t('Preço un.')}</th><th className="text-right">{t('Total')}</th></tr></thead>
               <tbody>
                 {itens.map((i) => { const p = prod(i.sku); const dif = i.qtd_aprovada !== null && i.qtd_aprovada !== i.qtd_solicitada; const preco = i.preco_eur ?? p?.preco_interco_eur ?? 0; return (
                   <tr key={i.id} className={dif ? 'bg-marca/10' : ''}>
-                    <td><div className="font-medium">{p?.descricao_br ?? i.sku}</div><div className="font-mono text-xs text-tinta-3">{i.sku}</div></td>
+                    <td><div className="font-medium">{nomeProduto(p, i.sku)}</div><div className="font-mono text-xs text-tinta-3">{i.sku}</div></td>
                     <td className="text-right tabular-nums">{fmtNum(i.qtd_solicitada)}</td>
-                    <td className={`text-right tabular-nums ${dif ? 'font-semibold' : ''}`}>{i.qtd_aprovada === null ? <span className="text-tinta-3">em análise</span> : fmtNum(i.qtd_aprovada)}</td>
+                    <td className={`text-right tabular-nums ${dif ? 'font-semibold' : ''}`}>{i.qtd_aprovada === null ? <span className="text-tinta-3">{t('em análise')}</span> : fmtNum(i.qtd_aprovada)}</td>
                     <td className="text-right tabular-nums">{fmtEur(preco)}</td>
                     <td className="text-right font-semibold tabular-nums">{fmtEur(preco * qtdFinal(i))}</td>
                   </tr>) })}
               </tbody>
-              <tfoot><tr><td colSpan={4} className="text-right font-semibold">Total estimado</td><td className="text-right text-lg font-semibold tabular-nums">{fmtEur(total)}</td></tr></tfoot>
+              <tfoot><tr><td colSpan={4} className="text-right font-semibold">{t('Total estimado')}</td><td className="text-right text-lg font-semibold tabular-nums">{fmtEur(total)}</td></tr></tfoot>
             </table>
           </div>
-          {pedido.observacao && <p className="cartao text-sm"><b>Suas observações:</b> {pedido.observacao}</p>}
-          <p className="text-xs text-tinta-3">Valores aproximados. O valor final é o da invoice comercial emitida no embarque.</p>
+          {pedido.observacao && <p className="cartao text-sm"><b>{t('Suas observações')}:</b> {pedido.observacao}</p>}
+          <p className="text-xs text-tinta-3">{t('Valores aproximados. O valor final é o da invoice comercial emitida no embarque.')}</p>
         </section>
       </div>
       {resumoAt.fonte === 'nota' && (
         <section className="space-y-3">
-          <h2 className="font-semibold">Pedido × atendimento <span className="text-sm font-normal text-tinta-3">· {ROTULO_FONTE[resumoAt.fonte]}</span></h2>
+          <h2 className="font-semibold">{t('Pedido × atendimento')} <span className="text-sm font-normal text-tinta-3">· {ROTULO_FONTE[resumoAt.fonte]}</span></h2>
           <CartoesAtendimento r={resumoAt} />
           <div className="cartao p-0"><TabelaAtendimento linhas={linhasAt} nome={nomeSku} /></div>
         </section>

@@ -1,5 +1,6 @@
-export function Carregando({ texto = 'Carregando…' }: { texto?: string }) {
-  return <p className="p-6 text-sm text-tinta-3" role="status">{texto}</p>
+import { t } from '../i18n/idioma'
+export function Carregando({ texto }: { texto?: string }) {
+  return <p className="p-6 text-sm text-tinta-3" role="status">{texto ?? t('Carregando…')}</p>
 }
 export function Erro({ erro }: { erro: unknown }) {
   const msg = erro instanceof Error ? erro.message : String(erro)

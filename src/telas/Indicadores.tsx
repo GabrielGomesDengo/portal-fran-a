@@ -12,6 +12,7 @@ import { BarraPct, CartoesAtendimento, PillSituacao, ROTULO_FONTE, TabelaAtendim
 import { Carregando, Erro } from '../components/Carregando'
 import { fmtData, fmtEur, fmtNum, hoje } from '../lib/formatos'
 import { ROTULO_STATUS, type Pedido } from '../tipos/dominio'
+import { t, nomeProduto } from '../i18n/idioma'
 
 type Aba = 'pedidos' | 'produtos' | 'familias' | 'ciclo' | 'otif'
 type Periodo = 'todos' | '90' | 'ano'
@@ -29,7 +30,7 @@ export function Indicadores() {
 
   const dados = useMemo(() => {
     if (!base) return null
-    const nome = (sku: string) => base.produtos.find((p) => p.sku === sku)?.descricao_br ?? sku
+    const nome = (sku: string) => nomeProduto(base.produtos.find((p) => p.sku === sku), sku)
     const corte = periodo === '90' ? somarDias(hoje(), -90) : periodo === 'ano' ? `${hoje().slice(0, 4)}-01-01` : '0000'
     const pedidos = base.pedidos.filter((p) => p.status !== 'cancelado' && p.data_embarque >= corte && (modal === 'todos' || p.modal === modal))
     const porPedido: LinhaPedido[] = pedidos.map((p) => {
@@ -57,32 +58,32 @@ export function Indicadores() {
 
   if (erro) return <Erro erro={erro} />
   if (!base || !dados || !perfil) return <Carregando />
-  const abas: [Aba, string][] = interno ? [['pedidos', 'Por pedido'], ['produtos', 'Por produto'], ['familias', 'Por família'], ['ciclo', 'Ciclo do pedido'], ['otif', 'OTIF']] : [['pedidos', 'Por pedido'], ['produtos', 'Por produto']]
+  const abas: [Aba, string][] = interno ? [['pedidos', t('Por pedido')], ['produtos', t('Por produto')], ['familias', t('Por família')], ['ciclo', t('Ciclo do pedido')], ['otif', 'OTIF']] : [['pedidos', t('Por pedido')], ['produtos', t('Por produto')]]
 
   return (
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">{interno ? 'Indicadores' : 'Seus indicadores'}</h1>
-          <p className="text-sm text-tinta-2">Pedido × atendimento. Atendido = quantidade faturada na invoice; antes da invoice, usamos o que já está no estoque como prévia.</p>
+          <h1 className="text-2xl font-semibold">{interno ? t('Indicadores') : t('Seus indicadores')}</h1>
+          <p className="text-sm text-tinta-2">{t('Pedido × atendimento. Atendido = quantidade faturada na invoice; antes da invoice, usamos o que já está no estoque como prévia.')}</p>
         </div>
         <div className="flex flex-wrap gap-2 text-sm">
-          <select value={periodo} onChange={(e) => setPeriodo(e.target.value as Periodo)} aria-label="Período"><option value="todos">Todos os embarques</option><option value="90">Embarques dos últimos 90 dias</option><option value="ano">Embarques deste ano</option></select>
-          <select value={modal} onChange={(e) => setModal(e.target.value as typeof modal)} aria-label="Modal"><option value="todos">Aéreo e marítimo</option><option value="aereo">Aéreo</option><option value="maritimo">Marítimo</option></select>
+          <select value={periodo} onChange={(e) => setPeriodo(e.target.value as Periodo)} aria-label={t('Período')}><option value="todos">{t('Todos os embarques')}</option><option value="90">{t('Embarques dos últimos 90 dias')}</option><option value="ano">{t('Embarques deste ano')}</option></select>
+          <select value={modal} onChange={(e) => setModal(e.target.value as typeof modal)} aria-label={t('Modal')}><option value="todos">{t('Aéreo e marítimo')}</option><option value="aereo">{t('Aéreo')}</option><option value="maritimo">{t('Marítimo')}</option></select>
         </div>
       </header>
 
       {dados.comAtend.length === 0 ? (
-        <div className="cartao text-center text-sm text-tinta-3">Ainda não há pedidos faturados neste filtro. Os indicadores consolidados aparecem quando a primeira invoice for emitida.{dados.emAndamento > 0 && ` ${dados.emAndamento} pedido(s) em produção podem ser acompanhados na lista abaixo.`}</div>
+        <div className="cartao text-center text-sm text-tinta-3">{t('Ainda não há pedidos faturados neste filtro. Os indicadores consolidados aparecem quando a primeira invoice for emitida.')}{dados.emAndamento > 0 && ` ${t('{n} pedido(s) em produção podem ser acompanhados na lista abaixo.', { n: dados.emAndamento })}`}</div>
       ) : (
         <CartoesAtendimento r={dados.total} extra={[
-          { rotulo: 'Shelf life na chegada', valor: pct(dados.shelf.total ? dados.shelf.ok / dados.shelf.total : null, 1), cor: corPct(dados.shelf.total ? dados.shelf.ok / dados.shelf.total : null), detalhe: `${dados.shelf.ok} de ${dados.shelf.total} lotes dentro do contract date` },
+          { rotulo: t('Shelf life na chegada'), valor: pct(dados.shelf.total ? dados.shelf.ok / dados.shelf.total : null, 1), cor: corPct(dados.shelf.total ? dados.shelf.ok / dados.shelf.total : null), detalhe: t('{a} de {b} lotes dentro do contract date', { a: dados.shelf.ok, b: dados.shelf.total }) },
         ]} />
       )}
-      {dados.comAtend.length > 0 && <p className="text-xs text-tinta-3">Consolidado de {dados.comAtend.length} pedido(s) faturado(s).{dados.emAndamento > 0 && ` ${dados.emAndamento} pedido(s) em produção ficam fora da média até a invoice.`}</p>}
-      {dados.liberados > 0 && <p className="text-sm text-tinta-2">Pontualidade da liberação para embarque: <b className={corPct(dados.pontualidade)}>{pct(dados.pontualidade)}</b> dos {dados.liberados} pedidos liberados até a data de embarque.</p>}
+      {dados.comAtend.length > 0 && <p className="text-xs text-tinta-3">{t('Consolidado de {n} pedido(s) faturado(s).', { n: dados.comAtend.length })}{dados.emAndamento > 0 && ` ${t('{n} pedido(s) em produção ficam fora da média até a invoice.', { n: dados.emAndamento })}`}</p>}
+      {dados.liberados > 0 && <p className="text-sm text-tinta-2">{t('Pontualidade da liberação para embarque')}: <b className={corPct(dados.pontualidade)}>{pct(dados.pontualidade)}</b> {t('dos {n} pedidos liberados até a data de embarque.', { n: dados.liberados })}</p>}
 
-      <nav className="flex flex-wrap gap-1 border-b border-linha" aria-label="Visões">
+      <nav className="flex flex-wrap gap-1 border-b border-linha" aria-label={t('Visões')}>
         {abas.map(([k, r]) => <button key={k} onClick={() => setAba(k)} className={`-mb-px border-b-2 px-3 py-2 text-sm ${aba === k ? 'border-tinta font-semibold' : 'border-transparent text-tinta-2 hover:text-tinta'}`}>{r}</button>)}
       </nav>
 
@@ -100,27 +101,27 @@ function PorPedido({ linhas, nome, interno }: { linhas: LinhaPedido[]; nome: (s:
   return (
     <div className="cartao overflow-x-auto p-0">
       <table className="grade">
-        <thead><tr><th /><th>Pedido</th><th>Modal</th><th>Embarque</th><th>Etapa</th><th>Volume</th><th>Produtos 100%</th><th>Valor</th><th className="text-right">Pedido €</th><th className="text-right">Atendido €</th><th>Shelf life</th></tr></thead>
+        <thead><tr><th /><th>{t('Pedido')}</th><th>{t('Modal')}</th><th>{t('Embarque')}</th><th>{t('Etapa')}</th><th>{t('Volume')}</th><th>{t('Produtos 100%')}</th><th>{t('Valor')}</th><th className="text-right">{t('Pedido')} €</th><th className="text-right">{t('Atendido')} €</th><th>Shelf life</th></tr></thead>
         <tbody>
           {linhas.map(({ p, linhas: ls, r, shelf }) => { const ab = aberto === p.id; const pend = r.fonte === 'pendente'; return (
             <Fragment key={p.id}>
               <tr className={`cursor-pointer hover:bg-fundo ${ab ? 'bg-marca/10' : ''}`} onClick={() => setAberto(ab ? null : p.id)}>
                 <td className="w-6 text-tinta-3">{ab ? '▾' : '▸'}</td>
-                <td><div className="whitespace-nowrap font-mono">{p.numero}</div>{p.fora_prazo && <span className="pill bg-alerta/15 text-alerta">fora do prazo</span>}</td>
-                <td>{p.modal === 'maritimo' ? 'Marítimo' : 'Aéreo'}</td><td>{fmtData(p.data_embarque)}</td>
-                <td className="text-xs">{ROTULO_STATUS[p.status]}<div className="text-tinta-3">{r.fonte === 'nota' ? 'em nota' : r.fonte === 'estoque' ? 'prévia estoque' : ''}</div></td>
+                <td><div className="whitespace-nowrap font-mono">{p.numero}</div>{p.fora_prazo && <span className="pill bg-alerta/15 text-alerta">{t('fora do prazo')}</span>}</td>
+                <td>{p.modal === 'maritimo' ? t('Marítimo') : t('Aéreo')}</td><td>{fmtData(p.data_embarque)}</td>
+                <td className="text-xs">{t(ROTULO_STATUS[p.status])}<div className="text-tinta-3">{r.fonte === 'nota' ? t('em nota') : r.fonte === 'estoque' ? t('prévia estoque') : ''}</div></td>
                 {r.fonte === 'nota' ? <>
                   <td><BarraPct v={r.fillRateVolume} largura="w-16" /></td><td><BarraPct v={r.fillRateSku} largura="w-16" /></td><td><BarraPct v={r.fillRateValor} largura="w-16" /></td>
-                </> : <td colSpan={3} className="text-xs text-tinta-3">{pend ? 'aguardando produção' : `em produção · ${pct(r.fillRateVolume)} do volume já no estoque`}</td>}
+                </> : <td colSpan={3} className="text-xs text-tinta-3">{pend ? t('aguardando produção') : t('em produção · {p} do volume já no estoque', { p: pct(r.fillRateVolume) })}</td>}
                 <td className="text-right tabular-nums">{fmtEur(r.valorSolicitado)}</td><td className="text-right tabular-nums">{r.fonte === 'nota' ? fmtEur(r.valorAtendido) : '—'}</td>
-                <td className={`tabular-nums ${corPct(shelf.total ? shelf.ok / shelf.total : null)}`}>{shelf.total ? `${shelf.ok}/${shelf.total} lotes` : '—'}</td>
+                <td className={`tabular-nums ${corPct(shelf.total ? shelf.ok / shelf.total : null)}`}>{shelf.total ? `${shelf.ok}/${shelf.total} ${t('lotes')}` : '—'}</td>
               </tr>
               {ab && <tr><td colSpan={11} className="bg-fundo p-3">
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm"><span>Linha a linha · <span className="text-tinta-3">{ROTULO_FONTE[r.fonte]}</span></span><Link className="underline" to={`/pedidos/${p.id}`}>Abrir pedido →</Link></div>
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm"><span>{t('Linha a linha')} · <span className="text-tinta-3">{ROTULO_FONTE[r.fonte]}</span></span><Link className="underline" to={`/pedidos/${p.id}`}>{t('Abrir pedido')} →</Link></div>
                 <div className="rounded-lg border border-linha bg-cartao"><TabelaAtendimento linhas={ls} nome={nome} interno={interno} /></div>
               </td></tr>}
             </Fragment>) })}
-          {linhas.length === 0 && <tr><td colSpan={11} className="text-center text-sm text-tinta-3">Nenhum pedido neste filtro.</td></tr>}
+          {linhas.length === 0 && <tr><td colSpan={11} className="text-center text-sm text-tinta-3">{t('Nenhum pedido neste filtro.')}</td></tr>}
         </tbody>
       </table>
     </div>
@@ -145,7 +146,7 @@ function TabelaAgregada({ itens, titulo, nome }: { itens: AgSku[]; titulo: strin
   return (
     <div className="cartao overflow-x-auto p-0">
       <table className="grade">
-        <thead><tr><th /><th>{titulo}</th><th className="text-right">Pedidos</th><th className="text-right">Pedido</th><th className="text-right">Atendido</th><th>% atendido</th><th className="text-right">Parciais</th><th className="text-right">Não atendidos</th><th className="text-right">Valor não atendido</th></tr></thead>
+        <thead><tr><th /><th>{titulo}</th><th className="text-right">{t('Pedidos')}</th><th className="text-right">{t('Pedido')}</th><th className="text-right">{t('Atendido')}</th><th>{t('% atendido')}</th><th className="text-right">{t('Parciais')}</th><th className="text-right">{t('Não atendidos')}</th><th className="text-right">{t('Valor não atendido')}</th></tr></thead>
         <tbody>
           {itens.map((a) => { const ab = aberto === a.chave; return (
             <Fragment key={a.chave}>
@@ -159,14 +160,14 @@ function TabelaAgregada({ itens, titulo, nome }: { itens: AgSku[]; titulo: strin
               </tr>
               {ab && <tr><td colSpan={9} className="bg-fundo p-3">
                 <table className="grade rounded-lg border border-linha bg-cartao">
-                  <thead><tr><th>Pedido</th>{!nome && <th>Produto</th>}<th>Embarque</th><th className="text-right">Pedido</th><th className="text-right">Atendido</th><th>%</th><th>Situação</th></tr></thead>
+                  <thead><tr><th>{t('Pedido')}</th>{!nome && <th>{t('Produto')}</th>}<th>{t('Embarque')}</th><th className="text-right">{t('Pedido')}</th><th className="text-right">{t('Atendido')}</th><th>%</th><th>{t('Situação')}</th></tr></thead>
                   <tbody>{a.detalhes.map(({ p, l }) => (
                     <tr key={p.id + l.sku}><td><Link className="font-mono underline" to={`/pedidos/${p.id}`}>{p.numero}</Link></td>{!nome && <td>{l.sku}</td>}<td>{fmtData(p.data_embarque)}</td>
                       <td className="text-right tabular-nums">{fmtNum(l.solicitado, 3)}</td><td className="text-right tabular-nums">{fmtNum(l.atendido, 3)}</td><td><BarraPct v={l.pct} largura="w-12" /></td><td><PillSituacao s={l.situacao} /></td></tr>))}</tbody>
                 </table>
               </td></tr>}
             </Fragment>) })}
-          {itens.length === 0 && <tr><td colSpan={9} className="text-center text-sm text-tinta-3">Sem dados de atendimento neste filtro.</td></tr>}
+          {itens.length === 0 && <tr><td colSpan={9} className="text-center text-sm text-tinta-3">{t('Sem dados de atendimento neste filtro.')}</td></tr>}
         </tbody>
       </table>
     </div>
@@ -174,14 +175,14 @@ function TabelaAgregada({ itens, titulo, nome }: { itens: AgSku[]; titulo: strin
 }
 
 function PorProduto({ linhas, base, interno }: { linhas: LinhaPedido[]; base: BaseIndicadores; interno: boolean }) {
-  const nome = (sku: string) => base.produtos.find((p) => p.sku === sku)?.descricao_br ?? sku
+  const nome = (sku: string) => nomeProduto(base.produtos.find((p) => p.sku === sku), sku)
   const itens = agregar(linhas, (sku) => [sku, nome(sku)])
-  return <div className="space-y-2"><p className="text-sm text-tinta-2">Ordenado pelo valor que deixou de ser atendido. Clique num produto para ver pedido a pedido.{!interno && ' Use para ajustar as próximas quantidades.'}</p><TabelaAgregada itens={itens} titulo="Produto" nome={nome} /></div>
+  return <div className="space-y-2"><p className="text-sm text-tinta-2">{t('Ordenado pelo valor que deixou de ser atendido. Clique num produto para ver pedido a pedido.')}{!interno && ` ${t('Use para ajustar as próximas quantidades.')}`}</p><TabelaAgregada itens={itens} titulo={t('Produto')} nome={nome} /></div>
 }
 
 function PorFamilia({ linhas, base }: { linhas: LinhaPedido[]; base: BaseIndicadores }) {
   const fam = (sku: string) => { const f = base.produtos.find((p) => p.sku === sku)?.familia?.trim() || 'Outros'; return [f, f] as [string, string] }
-  return <TabelaAgregada itens={agregar(linhas, fam)} titulo="Família" />
+  return <TabelaAgregada itens={agregar(linhas, fam)} titulo={t('Família')} />
 }
 
 function Ciclo({ base, pedidos }: { base: BaseIndicadores; pedidos: Pedido[] }) {
