@@ -29,6 +29,16 @@ função `minimo_dias_chegada` que espelha o motor TS) e `002_rls.sql` (polític
 Carga inicial feita a partir de `data/seed/`: 292 produtos (131 ativos = portfólio dos
 últimos 10 meses), parâmetros e tabela de contract date versão 1.
 
+### Manutenção das bases (admin)
+
+Menu **Manutenção** (só admin): visão geral das bases e saúde do cadastro, importação por
+Excel/CSV com prévia (novos, alterados, erros, removidos), histórico de cargas com
+**desfazer** e auditoria campo a campo. No banco: `importacao`, `importacao_linha`,
+`auditoria` e as funções `importar_base` / `desfazer_importacao` (migrations 008 e 009),
+que só aceitam o perfil admin e gravam a carga inteira em uma transação.
+As bases e seus cabeçalhos aceitos (inclusive nomes das extrações do SAP) estão em
+`src/manutencao/bases.ts`.
+
 ## Perfis e primeiro acesso
 
 Quem cria conta entra como **França** e **inativo**. Um Admin ativa e define o perfil em
@@ -71,4 +81,6 @@ data/seed/                  # CSVs extraídos das planilhas atuais
 - [x] Fase 4 — Operações: recebimento com confirmação de lote/fabricação/quantidade, OTIF (volume, SKU, shelf life, on-time), KPIs, packing list e invoice em PDF/Excel, credit note
 - [ ] Arquivo para NF no SAP — versão preliminar com 24 campos; aguardando a lista oficial de campos
 - [ ] Notificações por e-mail — aguardando definição do provedor
-- [ ] Fase 5 — tradução FR, dashboards, refino com usuários
+- [x] Tradução FR (seletor PT | FR)
+- [x] Manutenção de bases: importação com prévia e desfazer, auditoria, saúde do cadastro
+- [ ] Fase 5 — dashboards, refino com usuários

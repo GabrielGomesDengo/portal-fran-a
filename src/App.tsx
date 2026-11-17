@@ -10,6 +10,7 @@ import { Pedido } from './telas/pedidos/Pedido'
 import { Produtos } from './telas/admin/Produtos'
 import { Parametros } from './telas/admin/Parametros'
 import { Usuarios } from './telas/admin/Usuarios'
+import { Manutencao } from './telas/admin/manutencao/Manutencao'
 import { MinhaConta } from './telas/MinhaConta'
 import { Indicadores } from './telas/Indicadores'
 import { useState } from 'react'
@@ -44,6 +45,7 @@ export default function App() {
               <Route element={<RotaPerfil perfis={['admin']} />}>
                 <Route path="/admin/parametros" element={<Parametros />} />
                 <Route path="/admin/usuarios" element={<Usuarios />} />
+                <Route path="/admin/manutencao" element={<Manutencao />} />
               </Route>
             </Route>
           </Route>

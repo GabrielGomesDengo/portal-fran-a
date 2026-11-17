@@ -15,6 +15,7 @@ const MENU: Record<Perfil, { para: string; rotulo: string }[]> = {
   admin: [
     { para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/pedidos/novo', rotulo: 'Novo pedido' }, { para: '/indicadores', rotulo: 'Indicadores' },
     { para: '/admin/produtos', rotulo: 'Portfólio' }, { para: '/admin/parametros', rotulo: 'Parâmetros' }, { para: '/admin/usuarios', rotulo: 'Usuários' },
+    { para: '/admin/manutencao', rotulo: 'Manutenção' },
   ],
 }
 
