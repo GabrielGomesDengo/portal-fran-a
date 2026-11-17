@@ -7,12 +7,12 @@ import { avaliarValidade, dataMaximaProducao, validadeDoLote, type FaixaContract
 import { somarDias } from '../../dominio/calendario'
 import { fmtData, fmtNum, hoje } from '../../lib/formatos'
 import { Erro } from '../../components/Carregando'
-import { ImportarTransferenciaSap } from './ImportarTransferenciaSap'
+import { ImportarEstoqueSap } from './ImportarEstoqueSap'
 import type { Pedido, PedidoItem, Produto } from '../../tipos/dominio'
 
-export function PainelRecebimento({ pedido, itens, produtos, plano, recebimentos, contract, leadEstoque, antecedenciaEstoque, userId, editavel, aoConcluir }: {
+export function PainelRecebimento({ pedido, itens, produtos, plano, recebimentos, contract, leadEstoque, antecedenciaEstoque, userId, editavel, aoConcluir, depositoFranca = '' }: {
   pedido: Pedido; itens: PedidoItem[]; produtos: Produto[]; plano: LotePlano[]; recebimentos: Recebimento[]; contract: FaixaContractDate[]
-  leadEstoque: number; antecedenciaEstoque: number; userId: string; editavel: boolean; aoConcluir: () => void
+  leadEstoque: number; antecedenciaEstoque: number; userId: string; editavel: boolean; aoConcluir: () => void; depositoFranca?: string
 }) {
   const prod = (sku: string) => produtos.find((p) => p.sku === sku)
   // Junta o que já foi recebido com os lotes do plano ainda sem recebimento (o PCP pode incluir lotes depois).
@@ -65,7 +65,7 @@ export function PainelRecebimento({ pedido, itens, produtos, plano, recebimentos
       if (concluirRecebimento && linhas.every((l) => l.qtd_recebida <= 0)) throw new Error('Informe pelo menos um lote recebido antes de concluir.')
       await salvarRecebimentos(pedido.id, linhas, userId)
       let atual = pedido
-      const motivo = origemSap ? `Recebimento importado do SAP (${origemSap})` : null
+      const motivo = origemSap ? `Recebimento importado do estoque SAP (${origemSap})` : null
       if (atual.status === 'plano_concluido') { await mudarStatus(atual, 'em_recebimento', userId, motivo); atual = { ...atual, status: 'em_recebimento' } }
       else await registrarEvento(pedido.id, pedido.status, pedido.status, userId, motivo ?? 'Recebimento atualizado')
       if (concluirRecebimento && atual.status === 'em_recebimento') await mudarStatus(atual, 'packing_list', userId, 'Recebimento concluído')
@@ -84,15 +84,15 @@ export function PainelRecebimento({ pedido, itens, produtos, plano, recebimentos
         <p className="text-sm text-tinta-2">Itens precisam estar no estoque até <b>{fmtData(limiteEstoque)}</b> (produção até {fmtData(maxima)})</p>
       </div>
       <div className="flex flex-wrap items-start gap-3">
-        <p className="flex-1 text-xs text-tinta-3">Confira cada lote que desceu da produção: <b>lote, data de fabricação e quantidade</b> vêm do plano do PCP, mas precisam ser confirmados ou corrigidos pela Operação. Produção não registrada no plano entra com "+ lote extra". Se a transferência já foi feita no SAP, use <b>Importar do SAP</b> para preencher tudo de uma vez.</p>
+        <p className="flex-1 text-xs text-tinta-3">Confira cada lote que desceu da produção: <b>lote, data de fabricação e quantidade</b> vêm do plano do PCP, mas precisam ser confirmados ou corrigidos pela Operação. Produção não registrada no plano entra com "+ lote extra". Com a produção já transferida no SAP, use <b>Importar do SAP</b> e suba o relatório de estoque do depósito da França para preencher tudo de uma vez.</p>
         {editavel && !importando && <button className="btn-primario !py-1.5" onClick={() => setImportando(true)}>Importar do SAP</button>}
       </div>
       {editavel && importando && (
-        <ImportarTransferenciaSap pedido={pedido} itens={itens} produtos={produtos} linhas={linhas} contract={contract}
+        <ImportarEstoqueSap pedido={pedido} itens={itens} produtos={produtos} linhas={linhas} contract={contract} depositoPadrao={depositoFranca}
           onCancelar={() => setImportando(false)}
           onAplicar={(novas, resumo) => { setLinhas(novas); setOrigemSap(resumo); setImportando(false); setSalvo(false) }} />
       )}
-      {origemSap && <p className="rounded-md bg-ok/10 p-3 text-sm text-ok">Lotes preenchidos a partir do SAP ({origemSap}). Revise a tabela e salve ou conclua o recebimento.</p>}
+      {origemSap && <p className="rounded-md bg-ok/10 p-3 text-sm text-ok">Lotes preenchidos a partir do estoque SAP ({origemSap}). Revise a tabela e salve ou conclua o recebimento.</p>}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[['OTIF volume', otif.volume], ['OTIF SKU', otif.sku], ['OTIF shelf life', otif.shelfLife], ['On-time (no estoque até o limite)', otif.onTime]].map(([r, v]) => (
           <div key={r as string} className="rounded-lg bg-fundo p-3"><div className="rotulo">{r as string}</div><div className={`text-2xl font-semibold ${cor(v as number | null)}`}>{pct(v as number | null)}</div></div>

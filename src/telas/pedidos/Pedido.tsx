@@ -133,7 +133,8 @@ export function Pedido() {
       )}
       {emOps && (ehOps || recebimentos.length > 0) && (
         <PainelRecebimento key={`rec-${chave}`} pedido={pedido} itens={itens} produtos={produtos} plano={plano} recebimentos={recebimentos} contract={contract}
-          leadEstoque={leadEstoque} antecedenciaEstoque={antecedenciaEstoque} userId={user.id} editavel={ehOps && ['plano_concluido', 'em_recebimento', 'packing_list', 'invoice_gerada'].includes(pedido.status)} aoConcluir={carregar} />
+          leadEstoque={leadEstoque} antecedenciaEstoque={antecedenciaEstoque} userId={user.id} editavel={ehOps && ['plano_concluido', 'em_recebimento', 'packing_list', 'invoice_gerada'].includes(pedido.status)} aoConcluir={carregar}
+          depositoFranca={params.deposito_expedicao_franca ?? ''} />
       )}
       {['packing_list', 'invoice_gerada', 'concluido'].includes(pedido.status) && (
         <PainelPackingList key={`pl-${chave}`} pedido={pedido} produtos={produtos} recebimentos={recebimentos} inicial={packing}

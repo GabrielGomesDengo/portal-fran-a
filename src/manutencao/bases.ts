@@ -245,16 +245,20 @@ export type Previa = {
 
 /** Associa os cabeçalhos da planilha às colunas da base (por rótulo, nome do campo ou alias). */
 export function mapearCabecalhos(cabecalhos: string[], base: Base) {
+  // Cada coluna pega o cabeçalho que casa com o nome de MAIOR prioridade (rótulo, campo, depois
+  // aliases na ordem). Ex.: com "Utilização livre" e "Quantidade" no arquivo, vale "Utilização livre".
+  const norm = cabecalhos.map((h) => normalizarCabecalho(h ?? ''))
   const mapa = new Map<number, Coluna>()
-  const usadas = new Set<string>()
-  const ignorados: string[] = []
-  cabecalhos.forEach((h, i) => {
-    const n = normalizarCabecalho(h ?? '')
-    if (!n) return
-    const col = base.colunas.find((c) => !usadas.has(c.campo) && [c.rotulo, c.campo, ...(c.aliases ?? [])].some((x) => normalizarCabecalho(x) === n))
-    if (col) { mapa.set(i, col); usadas.add(col.campo) } else ignorados.push(h)
-  })
-  return { mapa, ignorados, faltandoChave: base.chave.filter((k) => !usadas.has(k)) }
+  const usados = new Set<number>()
+  for (const c of base.colunas) {
+    const nomes = [c.rotulo, c.campo, ...(c.aliases ?? [])].map(normalizarCabecalho)
+    let melhor = -1, rank = Infinity
+    norm.forEach((n, i) => { if (!n || usados.has(i)) return; const r = nomes.indexOf(n); if (r >= 0 && r < rank) { rank = r; melhor = i } })
+    if (melhor >= 0) { mapa.set(melhor, c); usados.add(melhor) }
+  }
+  const ignorados = cabecalhos.filter((_h, i) => norm[i] && !usados.has(i))
+  const campos = new Set([...mapa.values()].map((c) => c.campo))
+  return { mapa: new Map([...mapa.entries()].sort((a, b) => a[0] - b[0])), ignorados, faltandoChave: base.chave.filter((k) => !campos.has(k)) }
 }
 
 /** Acha a linha de cabeçalho (a que mais casa com as colunas da base entre as 15 primeiras). */
