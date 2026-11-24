@@ -8,16 +8,29 @@
 
 alter table produto add column if not exists sazonalidade text check (sazonalidade in ('pascoa', 'natal'));
 
--- Classificação inicial: famílias sazonais + itens de outras famílias identificados pela descrição
+-- Classificação inicial pela família (nomenclatura atual do cadastro: "SAZONAL - NATAL", "SAZONAL - PASCOA";
+-- nomes antigos do PMD como reserva). Itens de outras famílias com cara de sazonal NÃO entram aqui:
+-- ficam para o admin confirmar (Campanhas, Portfólio ou coluna Sazonal da tabela mestre).
 update produto set sazonalidade = 'pascoa'
-where trim(familia) in ('Classic Egg', 'MINI QQ EGG', 'QQ Egg', 'Stuffed EGG')
-   or sku in ('5200335', '5200340', '5200384', '5200393', '5200396');   -- Kids: mini ovos, kits de caça aos ovos, ovo Cafuné
+where upper(trim(familia)) in ('SAZONAL - PASCOA', 'SAZONAL - PÁSCOA', 'PASCOA', 'PÁSCOA')
+   or trim(familia) in ('Classic Egg', 'MINI QQ EGG', 'QQ Egg', 'Stuffed EGG');
 update produto set sazonalidade = 'natal'
-where trim(familia) in ('CHRISTMAS TO GO', 'PANETTONE CLASSIQUE', 'PANETTONE CUBES', 'PANETTONE GARNIS', 'PANETTONE QQ', 'TREE ORNAMENT')
-   or sku in ('3000098', '1300259',              -- panetone gotas 400 g (Barista)
-              '1300246', '1300247',              -- Dengo de corte edição Natal 25
-              '1300080',                         -- drágeas quinoa edição Natal
-              '1300081', '1300173', '2000774');  -- QQ e gotas sabor panettone
+where upper(trim(familia)) in ('SAZONAL - NATAL', 'NATAL')
+   or trim(familia) in ('CHRISTMAS TO GO', 'PANETTONE CLASSIQUE', 'PANETTONE CUBES', 'PANETTONE GARNIS', 'PANETTONE QQ', 'TREE ORNAMENT');
+
+-- SKU novo ou que muda para uma família "SAZONAL - ..." já entra na subcategoria (só preenche se estiver vazia).
+create or replace function sazonal_pela_familia() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  if new.sazonalidade is null and (tg_op = 'INSERT' or new.familia is distinct from old.familia) then
+    new.sazonalidade := case
+      when upper(trim(new.familia)) in ('SAZONAL - PASCOA', 'SAZONAL - PÁSCOA', 'PASCOA', 'PÁSCOA') then 'pascoa'
+      when upper(trim(new.familia)) in ('SAZONAL - NATAL', 'NATAL') then 'natal'
+    end;
+  end if;
+  return new;
+end $$;
+create trigger sazonal_pela_familia before insert or update on produto for each row execute function sazonal_pela_familia();
 
 create table campanha (
   id uuid primary key default gen_random_uuid(),
