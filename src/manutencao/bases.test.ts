@@ -35,6 +35,9 @@ describe('conversão de células', () => {
     expect(converter('x', col(produtos, 'ativo'))).toEqual({ valor: true })
     expect(converter('kg', col(produtos, 'unidade'))).toEqual({ valor: 'Kg' })
     expect(converter('cx', col(produtos, 'unidade'))).toHaveProperty('erro')
+    expect(converter('Pascoa', col(produtos, 'sazonalidade'))).toEqual({ valor: 'pascoa' })
+    expect(converter('NATAL', col(produtos, 'sazonalidade'))).toEqual({ valor: 'natal' })
+    expect(converter('Carnaval', col(produtos, 'sazonalidade'))).toHaveProperty('erro')
   })
 })
 

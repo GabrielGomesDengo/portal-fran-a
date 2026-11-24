@@ -18,6 +18,8 @@ export type Coluna = {
   ajuda?: string
   /** Valores permitidos (texto). */
   opcoes?: string[]
+  /** Rótulo na planilha → valor gravado (ex.: Páscoa → pascoa). */
+  valores?: Record<string, string>
   /** Remove zeros à esquerda (código de material do SAP). */
   semZerosEsquerda?: boolean
   /** Coluna NOT NULL no banco: não aceita LIMPAR. */
@@ -82,6 +84,7 @@ export const BASES: Base[] = [
       { obrigatorioAtivo: true, campo: 'preco_interco_eur', rotulo: 'Preço interco (€)', tipo: 'decimal', grupo: 'Comercial', min: 0, aliases: ['Preço', 'Preco EUR', 'Price'] },
       { campo: 'cogs_eur', rotulo: 'COGS (€)', tipo: 'decimal', grupo: 'Comercial', min: 0, aliases: ['COGS'] },
       { campo: 'ativo', rotulo: 'Ativo no portfólio', tipo: 'booleano', grupo: 'Portfólio', naoNulo: true, aliases: ['Ativo'], ajuda: 'Sim = aparece no catálogo da França.' },
+      { campo: 'sazonalidade', rotulo: 'Sazonal', tipo: 'texto', grupo: 'Portfólio', opcoes: ['Páscoa', 'Natal'], valores: { 'Páscoa': 'pascoa', 'Natal': 'natal' }, aliases: ['Sazonalidade', 'Subcategoria sazonal', 'Campanha'], ajuda: 'Páscoa ou Natal: o item só aparece para a França com campanha aberta. Vazio = item regular.' },
     ],
   },
   {
@@ -187,9 +190,10 @@ export function converter(bruto: unknown, col: Coluna): Conversao {
       let s = typeof v === 'number' ? (Number.isInteger(v) ? String(v) : String(v)) : v instanceof Date ? v.toISOString().slice(0, 10) : String(v).trim()
       if (col.semZerosEsquerda && /^\d+$/.test(s)) s = s.replace(/^0+(?=\d)/, '')
       if (col.opcoes) {
-        const achou = col.opcoes.find((o) => o.toLowerCase() === s.toLowerCase())
+        const n = normalizarCabecalho(s)
+        const achou = col.opcoes.find((o) => normalizarCabecalho(o) === n) ?? Object.entries(col.valores ?? {}).find(([, v]) => normalizarCabecalho(v) === n)?.[0]
         if (!achou) return { erro: `"${s}" não é válido (use ${col.opcoes.join(' ou ')})` }
-        s = achou
+        s = col.valores?.[achou] ?? achou
       }
       return { valor: s }
     }

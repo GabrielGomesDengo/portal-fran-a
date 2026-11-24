@@ -114,4 +114,13 @@ export const FR: Record<string, string> = {
   'Sem dados de atendimento neste filtro.': 'Aucune donnée de livraison pour ce filtre.', 'Família': 'Famille',
   'Ordenado pelo valor que deixou de ser atendido. Clique num produto para ver pedido a pedido.': 'Trié par montant non livré. Cliquez sur un produit pour le détail par commande.',
   'Use para ajustar as próximas quantidades.': 'Utile pour ajuster vos prochaines quantités.',
+  // Campanhas sazonais
+  'Campanhas': 'Campagnes', 'Campanhas abertas': 'Campagnes ouvertes', 'Campanha {nome} aberta': 'Campagne {nome} ouverte', 'Ver produtos da campanha': 'Voir les produits de la campagne',
+  'pedidos até {ate}': "commandes jusqu'au {ate}", 'embarques de {de} a {ate}': 'expéditions du {de} au {ate}', 'embarques até {ate}': "expéditions jusqu'au {ate}",
+  'embarques a partir de {de}': 'expéditions à partir du {de}', 'qualquer data de embarque': "toute date d'expédition",
+  'esta data inclui os itens de {s}': 'cette date inclut les produits de {s}', 'com esta data, os itens de {s} ficam bloqueados': 'avec cette date, les produits de {s} sont bloqués',
+  'Só para {janela}. Altere a data de embarque para pedir.': "Uniquement pour {janela}. Modifiez la date d'expédition pour commander.",
+  'Fora da campanha para esta data de embarque: remova o item ou altere o envio.': "Hors campagne pour cette date d'expédition : retirez le produit ou modifiez l'envoi.",
+  '{n} item sazonal está fora da janela da campanha para esta data de embarque.': "{n} produit saisonnier est hors de la période de la campagne pour cette date d'expédition.",
+  '{n} itens sazonais estão fora da janela da campanha para esta data de embarque.': "{n} produits saisonniers sont hors de la période de la campagne pour cette date d'expédition.",
 }

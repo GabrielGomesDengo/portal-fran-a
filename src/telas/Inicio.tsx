@@ -10,6 +10,10 @@ import { ROTULO_STATUS, type Pedido, type PedidoItem, type Perfil, type StatusPe
 import { fmtData, fmtEur, fmtNum } from '../lib/formatos'
 import { Carregando, Erro } from '../components/Carregando'
 import { t } from '../i18n/idioma'
+import { listarCampanhas } from '../dados/campanhas'
+import { campanhasAbertas, type Campanha } from '../dominio/campanhas'
+import { SeloSazonal, rotuloCampanha } from '../components/Sazonal'
+import { hoje } from '../lib/formatos'
 
 /** Quais status pedem ação de cada perfil. */
 const MINHA_VEZ: Record<Perfil, StatusPedido[]> = {
@@ -20,16 +24,16 @@ const MINHA_VEZ: Record<Perfil, StatusPedido[]> = {
   admin: [],
 }
 
-type Base = { pedidos: Pedido[]; eventos: Map<string, EventoCiclo[]>; itens: PedidoItem[]; params: Record<string, string> }
+type Base = { pedidos: Pedido[]; eventos: Map<string, EventoCiclo[]>; itens: PedidoItem[]; params: Record<string, string>; campanhas: Campanha[] }
 
 export function Inicio() {
   const { perfil } = useAuth()
   const [base, setBase] = useState<Base | null>(null)
   const [erro, setErro] = useState<unknown>(null)
   useEffect(() => {
-    Promise.all([listarPedidos(), listarTodosEventos(), listarTodosItens(), carregarParametros()]).then(([pedidos, evs, itens, params]) => {
+    Promise.all([listarPedidos(), listarTodosEventos(), listarTodosItens(), carregarParametros(), listarCampanhas().catch(() => [])]).then(([pedidos, evs, itens, params, campanhas]) => {
       const eventos = new Map<string, EventoCiclo[]>(); for (const e of evs) { const l = eventos.get(e.pedido_id) ?? []; l.push(e); eventos.set(e.pedido_id, l) }
-      setBase({ pedidos, eventos, itens, params })
+      setBase({ pedidos, eventos, itens, params, campanhas })
     }).catch(setErro)
   }, [])
   if (erro) return <Erro erro={erro} />
@@ -49,6 +53,13 @@ function InicioFranca({ base, nome }: { base: Base; nome: string }) {
         <div><h1 className="text-2xl font-semibold">{t('Olá, {nome}', { nome: nome.split(' ')[0] })}</h1><p className="text-sm text-tinta-2">{t('Acompanhe seus pedidos à Dengo Brasil.')}</p></div>
         <Link to="/pedidos/novo" className="btn-primario px-5 py-3">+ {t('Novo pedido')}</Link>
       </div>
+      {campanhasAbertas(base.campanhas, hoje()).map((c) => (
+        <Link key={c.id} to="/pedidos/novo" className="flex flex-wrap items-center gap-2 rounded-lg border border-marca/60 bg-cartao p-3 text-sm transition hover:shadow-md">
+          <SeloSazonal s={c.sazonalidade} />
+          <span><b>{t('Campanha {nome} aberta', { nome: rotuloCampanha(c) })}</b> · {t('pedidos até {ate}', { ate: fmtData(c.pedidos_ate) })}{c.embarque_de && c.embarque_ate ? ` · ${t('embarques de {de} a {ate}', { de: fmtData(c.embarque_de), ate: fmtData(c.embarque_ate) })}` : ''}</span>
+          <span className="ml-auto font-semibold underline">{t('Ver produtos da campanha')} →</span>
+        </Link>
+      ))}
       {acao.length > 0 && (
         <div className="rounded-lg border border-marca bg-marca/15 p-3 text-sm"><b>{t('{n} pedido(s) precisam da sua resposta:', { n: acao.length })}</b> {acao.map((p) => <Link key={p.id} className="ml-2 underline" to={`/pedidos/${p.id}`}>{p.numero}</Link>)}</div>
       )}

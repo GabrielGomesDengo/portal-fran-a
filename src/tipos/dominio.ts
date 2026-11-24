@@ -46,6 +46,8 @@ export type Produto = {
   qtd_10_meses: number | null
   num_embarques_10_meses: number | null
   ultimo_embarque: string | null
+  /** Subcategoria sazonal: só pode ser pedido em campanha aberta. */
+  sazonalidade?: 'pascoa' | 'natal' | null
 }
 
 export type Pedido = {

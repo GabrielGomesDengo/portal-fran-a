@@ -16,6 +16,7 @@ function baixar(buf: ArrayBuffer, nome: string) {
 function valorCelula(v: unknown, c: Coluna): ExcelJS.CellValue {
   if (v === null || v === undefined) return null
   if (c.tipo === 'booleano') return v ? 'Sim' : 'Não'
+  if (c.valores) { const r = Object.entries(c.valores).find(([, x]) => x === v); if (r) return r[0] }
   if (c.tipo === 'data' && typeof v === 'string') { const [a, m, d] = v.slice(0, 10).split('-').map(Number); return new Date(Date.UTC(a, m - 1, d)) }
   if ((c.tipo === 'decimal' || c.tipo === 'inteiro') && typeof v === 'string') return Number(v)
   return v as ExcelJS.CellValue

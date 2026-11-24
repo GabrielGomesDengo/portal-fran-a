@@ -5,6 +5,9 @@ import { carregarParametros, type Parametros } from '../../dados/parametros'
 import { listarProdutos } from '../../dados/produtos'
 import { carregarTabelaContract } from '../../dados/contractDate'
 import { criarPedido } from '../../dados/pedidos'
+import { listarCampanhas } from '../../dados/campanhas'
+import { campanhasAbertas, liberacaoSazonal, type Campanha, type Sazonalidade } from '../../dominio/campanhas'
+import { SeloSazonal, nomeSazonalidade, rotuloCampanha } from '../../components/Sazonal'
 import { regrasDoModal, type Modal } from '../../dominio/modal'
 import { dataChegadaFR } from '../../dominio/contractDate'
 import { diaDaSemana, diasEntre, somarDias } from '../../dominio/calendario'
@@ -40,10 +43,11 @@ export function NovoPedido() {
   const [ordem, setOrdem] = useState<Ordem>('relevancia')
   const [soCarrinho, setSoCarrinho] = useState(false)
   const [enviando, setEnviando] = useState(false)
+  const [campanhas, setCampanhas] = useState<Campanha[]>([])
 
   useEffect(() => {
-    Promise.all([carregarParametros(), listarProdutos(true), carregarTabelaContract()])
-      .then(([p, pr, c]) => { setParams(p); setProdutos(pr); setContractVersao(c.versao) })
+    Promise.all([carregarParametros(), listarProdutos(true), carregarTabelaContract(), listarCampanhas()])
+      .then(([p, pr, c, camp]) => { setParams(p); setProdutos(pr); setContractVersao(c.versao); setCampanhas(camp) })
       .catch(setErro)
   }, [])
   useEffect(() => { window.scrollTo({ top: 0 }) }, [passo])
@@ -57,18 +61,25 @@ export function NovoPedido() {
   const dataValida = !!dataEmbarque && dataEmbarque > hojeL && (!foraPrazo || justificativa.trim().length >= 5)
 
   const prod = (sku: string) => produtos?.find((p) => p.sku === sku)
+  // Itens sazonais: sem campanha aberta ficam fora do catálogo; com campanha aberta mas embarque fora da janela, aparecem bloqueados.
+  const abertas = useMemo(() => campanhasAbertas(campanhas, hojeL), [campanhas, hojeL])
+  const liberacao = (p: Produto) => liberacaoSazonal(p.sazonalidade, campanhas, hojeL, dataEmbarque || null)
+  const catalogo = useMemo(() => (produtos ?? []).filter((p) => { const l = liberacao(p); return !l || l.liberado || l.motivo === 'fora_embarque' }),
+    [produtos, campanhas, dataEmbarque]) // eslint-disable-line react-hooks/exhaustive-deps
   const familias = useMemo(() => {
     const m = new Map<string, number>()
-    for (const p of produtos ?? []) { const f = p.familia?.trim() || 'Outros'; m.set(f, (m.get(f) ?? 0) + 1) }
+    for (const p of catalogo) { const f = p.familia?.trim() || 'Outros'; m.set(f, (m.get(f) ?? 0) + 1) }
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-  }, [produtos])
+  }, [catalogo])
+  const sazonaisNoCatalogo = (s: Sazonalidade) => catalogo.filter((p) => p.sazonalidade === s).length
 
   const linhaTotal = (p: Produto, cx: number) => cx * porCaixa(p) * (p.preco_interco_eur ?? 0)
   const visiveis = useMemo(() => {
     const t = busca.trim().toLowerCase()
-    const lista = (produtos ?? []).filter((p) => {
+    const lista = catalogo.filter((p) => {
       if (soCarrinho && !carrinho[p.sku]) return false
-      if (familia && (p.familia?.trim() || 'Outros') !== familia) return false
+      if (familia.startsWith('saz:')) { if (p.sazonalidade !== familia.slice(4)) return false }
+      else if (familia && (p.familia?.trim() || 'Outros') !== familia) return false
       return !t || p.sku.includes(t) || p.descricao_br.toLowerCase().includes(t) || (p.descricao_fr ?? '').toLowerCase().includes(t) || (p.descricao_en ?? '').toLowerCase().includes(t)
     })
     const preco = (p: Produto) => p.preco_interco_eur ?? 0
@@ -80,12 +91,14 @@ export function NovoPedido() {
       nome: (a, b) => a.descricao_br.localeCompare(b.descricao_br),
     }
     return lista.sort(cmp[ordem])
-  }, [produtos, busca, familia, ordem, soCarrinho, carrinho]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [catalogo, busca, familia, ordem, soCarrinho, carrinho]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const itens = useMemo(() => Object.entries(carrinho).filter(([, cx]) => cx > 0).map(([sku, caixas]) => {
     const p = prod(sku)!; const qtd = caixas * porCaixa(p)
-    return { sku, caixas, qtd, preco_eur: p.preco_interco_eur, total: qtd * (p.preco_interco_eur ?? 0), produto: p }
-  }).sort((a, b) => b.total - a.total), [carrinho, produtos]) // eslint-disable-line react-hooks/exhaustive-deps
+    const l = liberacao(p)
+    return { sku, caixas, qtd, preco_eur: p.preco_interco_eur, total: qtd * (p.preco_interco_eur ?? 0), produto: p, bloqueado: !!l && !l.liberado }
+  }).sort((a, b) => b.total - a.total), [carrinho, produtos, campanhas, dataEmbarque]) // eslint-disable-line react-hooks/exhaustive-deps
+  const bloqueados = itens.filter((i) => i.bloqueado)
   const total = itens.reduce((s, i) => s + i.total, 0)
   const totalCaixas = itens.reduce((s, i) => s + i.caixas, 0)
 
@@ -104,6 +117,9 @@ export function NovoPedido() {
       nav(`/pedidos/${pedido.id}?novo=1`)
     } catch (e) { setErro(e); setEnviando(false) }
   }
+
+  const janela = (c: Campanha) => c.embarque_de && c.embarque_ate ? t('embarques de {de} a {ate}', { de: fmtData(c.embarque_de), ate: fmtData(c.embarque_ate) })
+    : c.embarque_ate ? t('embarques até {ate}', { ate: fmtData(c.embarque_ate) }) : c.embarque_de ? t('embarques a partir de {de}', { de: fmtData(c.embarque_de) }) : t('qualquer data de embarque')
 
   if (erro && !params) return <Erro erro={erro} />
   if (!params || !produtos || !regras) return <Carregando />
@@ -166,6 +182,21 @@ export function NovoPedido() {
             <label className="block"><span className="rotulo">{t('Nº do seu pedido (PO) · opcional')}</span><input className="mt-1 w-full sm:w-80" value={poFranca} onChange={(e) => setPoFranca(e.target.value)} placeholder="Ship.2026xx-PA00xxx" /></label>
           </div>
 
+          {abertas.length > 0 && (
+            <div className="cartao space-y-2 border-marca/60">
+              <p className="rotulo">{t('Campanhas abertas')}</p>
+              {abertas.map((c) => (
+                <p key={c.id} className="flex flex-wrap items-center gap-2 text-sm">
+                  <SeloSazonal s={c.sazonalidade} />
+                  <span><b>{rotuloCampanha(c)}</b>: {t('pedidos até {ate}', { ate: fmtData(c.pedidos_ate) })} · {janela(c)}.</span>
+                  {dataEmbarque && (liberacaoSazonal(c.sazonalidade, [c], hojeL, dataEmbarque)?.liberado
+                    ? <span className="text-ok">✓ {t('esta data inclui os itens de {s}', { s: nomeSazonalidade(c.sazonalidade) })}</span>
+                    : <span className="text-alerta">{t('com esta data, os itens de {s} ficam bloqueados', { s: nomeSazonalidade(c.sazonalidade) })}</span>)}
+                </p>
+              ))}
+            </div>
+          )}
+
           <div className="flex justify-end">
             <button className="btn-primario px-6 py-3 text-base" disabled={!dataValida} onClick={() => setPasso('catalogo')}>{t('Escolher produtos')} →</button>
           </div>
@@ -189,7 +220,12 @@ export function NovoPedido() {
                 <label className="flex items-center gap-1.5 text-sm"><input type="checkbox" checked={soCarrinho} onChange={(e) => setSoCarrinho(e.target.checked)} /> {t('Só no carrinho')}</label>
               </div>
               <div className="rolagem-fina mt-2 flex gap-1.5 overflow-x-auto pb-1">
-                <Chip ativo={!familia} onClick={() => setFamilia('')}>{t('Todas')} ({produtos.length})</Chip>
+                <Chip ativo={!familia} onClick={() => setFamilia('')}>{t('Todas')} ({catalogo.length})</Chip>
+                {abertas.filter((c, i, a) => a.findIndex((x) => x.sazonalidade === c.sazonalidade) === i && sazonaisNoCatalogo(c.sazonalidade) > 0).map((c) => (
+                  <Chip key={c.id} ativo={familia === `saz:${c.sazonalidade}`} onClick={() => setFamilia(familia === `saz:${c.sazonalidade}` ? '' : `saz:${c.sazonalidade}`)}>
+                    ★ {nomeSazonalidade(c.sazonalidade)} ({sazonaisNoCatalogo(c.sazonalidade)})
+                  </Chip>
+                ))}
                 {familias.map(([f, n]) => <Chip key={f} ativo={familia === f} onClick={() => setFamilia(familia === f ? '' : f)}>{f.toLowerCase()} ({n})</Chip>)}
               </div>
               <div className="mt-2 hidden grid-cols-[1fr_90px_200px_110px] gap-3 px-3 text-xs font-semibold uppercase tracking-wide text-tinta-3 md:grid">
@@ -197,18 +233,24 @@ export function NovoPedido() {
               </div>
             </div>
 
+            {abertas.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 rounded-lg bg-marca/10 px-3 py-2 text-sm">
+                {abertas.map((c) => <span key={c.id} className="flex items-center gap-1.5"><SeloSazonal s={c.sazonalidade} /> <b>{rotuloCampanha(c)}</b> · {t('pedidos até {ate}', { ate: fmtData(c.pedidos_ate) })} · {janela(c)}</span>)}
+              </div>
+            )}
             <ul className="mt-2 space-y-1.5">
               {visiveis.length === 0 && <li className="cartao text-center text-sm text-tinta-3">{t('Nenhum produto encontrado com esses filtros.')}</li>}
-              {visiveis.map((p) => { const cx = carrinho[p.sku] ?? 0; const no = cx > 0; return (
-                <li key={p.sku} className={`grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2.5 transition md:grid-cols-[1fr_90px_200px_110px] ${no ? 'border-marca bg-marca/10' : 'border-linha bg-cartao'}`}>
+              {visiveis.map((p) => { const cx = carrinho[p.sku] ?? 0; const no = cx > 0; const l = liberacao(p); const bloq = !!l && !l.liberado; return (
+                <li key={p.sku} className={`grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 rounded-lg border px-3 py-2.5 transition md:grid-cols-[1fr_90px_200px_110px] ${bloq ? 'border-linha bg-fundo opacity-75' : no ? 'border-marca bg-marca/10' : 'border-linha bg-cartao'}`}>
                   <div className="min-w-0">
-                    <div className="font-medium leading-tight">{nomeProduto(p)}</div>
+                    <div className="font-medium leading-tight">{p.sazonalidade && <SeloSazonal s={p.sazonalidade} className="mr-1.5 align-middle" />}{nomeProduto(p)}</div>
+                    {bloq && l && !l.liberado && l.motivo === 'fora_embarque' && <div className="mt-0.5 text-xs text-alerta">{t('Só para {janela}. Altere a data de embarque para pedir.', { janela: janela(l.campanhas[0]) })}</div>}
                     <div className="mt-0.5 text-xs text-tinta-3">
                       <span className="font-mono">{p.sku}</span> · {t('caixa com')} {fmtNum(porCaixa(p))} {um(p)}{p.shelf_life_dias ? ` · ${t('validade {n} dias', { n: p.shelf_life_dias })}` : ''}
                     </div>
                   </div>
                   <div className="text-right text-sm md:order-none">{fmtEur(p.preco_interco_eur)}<span className="text-xs text-tinta-3">/{um(p)}</span></div>
-                  <Stepper caixas={cx} unidades={cx * porCaixa(p)} um={um(p)} onChange={(v) => setCx(p.sku, v)} rotulo={nomeProduto(p)} />
+                  <Stepper caixas={cx} unidades={cx * porCaixa(p)} um={um(p)} onChange={(v) => setCx(p.sku, v)} rotulo={nomeProduto(p)} bloqueado={bloq} />
                   <div className={`text-right font-semibold tabular-nums ${no ? '' : 'text-tinta-3'}`}>{no ? fmtEur(linhaTotal(p, cx)) : '—'}</div>
                 </li>) })}
             </ul>
@@ -251,7 +293,7 @@ export function NovoPedido() {
               <tbody>
                 {itens.map((i) => (
                   <tr key={i.sku}>
-                    <td><div className="font-medium">{nomeProduto(i.produto)}</div><div className="text-xs text-tinta-3"><span className="font-mono">{i.sku}</span> · {t('caixa com')} {fmtNum(porCaixa(i.produto))} {um(i.produto)}</div></td>
+                    <td><div className="font-medium">{i.produto.sazonalidade && <SeloSazonal s={i.produto.sazonalidade} className="mr-1.5 align-middle" />}{nomeProduto(i.produto)}</div>{i.bloqueado && <div className="text-xs font-semibold text-erro">{t('Fora da campanha para esta data de embarque: remova o item ou altere o envio.')}</div>}<div className="text-xs text-tinta-3"><span className="font-mono">{i.sku}</span> · {t('caixa com')} {fmtNum(porCaixa(i.produto))} {um(i.produto)}</div></td>
                     <td className="text-right">{fmtEur(i.preco_eur)}</td>
                     <td><div className="flex justify-center"><Stepper caixas={i.caixas} unidades={i.qtd} um={um(i.produto)} onChange={(v) => setCx(i.sku, v)} rotulo={nomeProduto(i.produto)} /></div></td>
                     <td className="text-right font-semibold tabular-nums">{fmtEur(i.total)}</td>
@@ -265,10 +307,11 @@ export function NovoPedido() {
           </div>
           <label className="block"><span className="rotulo">{t('Observações para a Dengo Brasil')}</span><textarea className="mt-1 w-full" rows={3} value={obs} onChange={(e) => setObs(e.target.value)} /></label>
           <p className="text-xs text-tinta-3">{t('Valores aproximados pelo preço intercompany EXW. O valor final é o da invoice comercial.')}</p>
+          {bloqueados.length > 0 && <p className="rounded-md bg-erro/10 p-3 text-sm text-erro">{tp(bloqueados.length, '{n} item sazonal está fora da janela da campanha para esta data de embarque.', '{n} itens sazonais estão fora da janela da campanha para esta data de embarque.')}</p>}
           {erro ? <Erro erro={erro} /> : null}
           <div className="flex flex-wrap justify-between gap-2">
             <button className="btn-secundario" onClick={() => setPasso('catalogo')}>← {t('Voltar ao catálogo')}</button>
-            <button className="btn-primario px-6 py-3 text-base" disabled={enviando || itens.length === 0} onClick={enviar}>{enviando ? t('Enviando…') : foraPrazo ? t('Enviar para aprovação') : t('Enviar pedido')}</button>
+            <button className="btn-primario px-6 py-3 text-base" disabled={enviando || itens.length === 0 || bloqueados.length > 0} onClick={enviar}>{enviando ? t('Enviando…') : foraPrazo ? t('Enviar para aprovação') : t('Enviar pedido')}</button>
           </div>
         </section>
       )}
@@ -293,14 +336,14 @@ function Etapas({ passo, irPara, podeAvancar, temItens }: { passo: Passo; irPara
   )
 }
 
-function Stepper({ caixas, unidades, um, onChange, rotulo }: { caixas: number; unidades: number; um: string; onChange: (v: number) => void; rotulo: string }) {
+function Stepper({ caixas, unidades, um, onChange, rotulo, bloqueado }: { caixas: number; unidades: number; um: string; onChange: (v: number) => void; rotulo: string; bloqueado?: boolean }) {
   return (
     <div className="flex items-center justify-start gap-2 md:justify-center">
       <div className="flex items-center rounded-md border border-linha bg-cartao">
         <button type="button" className="h-9 w-9 text-lg disabled:opacity-30" disabled={caixas <= 0} onClick={() => onChange(caixas - 1)} aria-label={`${t('Remover uma caixa de')} ${rotulo}`}>−</button>
         <input type="number" inputMode="numeric" min={0} className="h-9 w-14 rounded-none border-0 border-x border-linha p-0 text-center tabular-nums focus:ring-0" value={caixas || ''} placeholder="0"
-          onChange={(e) => onChange(Number(e.target.value))} aria-label={`${t('Caixas de')} ${rotulo}`} />
-        <button type="button" className="h-9 w-9 text-lg" onClick={() => onChange(caixas + 1)} aria-label={`${t('Adicionar uma caixa de')} ${rotulo}`}>+</button>
+          onChange={(e) => onChange(Number(e.target.value))} aria-label={`${t('Caixas de')} ${rotulo}`} disabled={bloqueado && caixas === 0} />
+        <button type="button" className="h-9 w-9 text-lg disabled:opacity-30" disabled={bloqueado} onClick={() => onChange(caixas + 1)} aria-label={`${t('Adicionar uma caixa de')} ${rotulo}`}>+</button>
       </div>
       <span className="w-20 text-xs leading-tight text-tinta-3">{caixas > 0 ? <>{t('cx')}<br />= {fmtNum(unidades)} {um}</> : t('caixas')}</span>
     </div>

@@ -3,17 +3,18 @@ import { listarProdutos, salvarProduto } from '../../dados/produtos'
 import { Carregando, Erro } from '../../components/Carregando'
 import { fmtEur, fmtNum } from '../../lib/formatos'
 import type { Produto } from '../../tipos/dominio'
+import { LISTA_SAZONALIDADES, SAZONALIDADES, type Sazonalidade } from '../../dominio/campanhas'
 
 export function Produtos() {
   const [produtos, setProdutos] = useState<Produto[] | null>(null)
   const [erro, setErro] = useState<unknown>(null)
-  const [busca, setBusca] = useState(''); const [soAtivos, setSoAtivos] = useState(true); const [soDiverg, setSoDiverg] = useState(false)
+  const [busca, setBusca] = useState(''); const [soAtivos, setSoAtivos] = useState(true); const [soDiverg, setSoDiverg] = useState(false); const [soSazonais, setSoSazonais] = useState(false)
   useEffect(() => { listarProdutos().then(setProdutos).catch(setErro) }, [])
   const lista = useMemo(() => (produtos ?? []).filter((p) => {
     const t = busca.toLowerCase()
     return (!t || p.sku.includes(t) || p.descricao_br.toLowerCase().includes(t)) && (!soAtivos || p.ativo)
-      && (!soDiverg || (p.shelf_life_dias_franca && p.shelf_life_dias !== p.shelf_life_dias_franca))
-  }), [produtos, busca, soAtivos, soDiverg])
+      && (!soDiverg || (p.shelf_life_dias_franca && p.shelf_life_dias !== p.shelf_life_dias_franca)) && (!soSazonais || !!p.sazonalidade)
+  }), [produtos, busca, soAtivos, soDiverg, soSazonais])
 
   async function editar(p: Produto, campos: Partial<Produto>) {
     setProdutos((ps) => ps!.map((x) => (x.sku === p.sku ? { ...x, ...campos } : x)))
@@ -29,11 +30,12 @@ export function Produtos() {
         <input placeholder="Buscar SKU ou descrição" value={busca} onChange={(e) => setBusca(e.target.value)} />
         <label className="flex items-center gap-1"><input type="checkbox" checked={soAtivos} onChange={(e) => setSoAtivos(e.target.checked)} /> só ativos</label>
         <label className="flex items-center gap-1"><input type="checkbox" checked={soDiverg} onChange={(e) => setSoDiverg(e.target.checked)} /> shelf life divergente da França ({divergentes})</label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={soSazonais} onChange={(e) => setSoSazonais(e.target.checked)} /> só sazonais ({produtos.filter((p) => p.sazonalidade).length})</label>
         <span className="ml-auto text-tinta-3">{lista.length} de {produtos.length} · {produtos.filter((p) => p.ativo).length} ativos</span>
       </div>
       <div className="cartao overflow-x-auto p-0">
         <table className="grade">
-          <thead><tr><th>Ativo</th><th>SKU</th><th>Descrição</th><th>Família</th><th>UM</th><th>Múltiplo</th><th>Shelf SAP</th><th>Shelf FR</th><th>Preço €</th><th>HS</th><th>10 meses</th></tr></thead>
+          <thead><tr><th>Ativo</th><th>SKU</th><th>Descrição</th><th>Família</th><th>Sazonal</th><th>UM</th><th>Múltiplo</th><th>Shelf SAP</th><th>Shelf FR</th><th>Preço €</th><th>HS</th><th>10 meses</th></tr></thead>
           <tbody>
             {lista.map((p) => (
               <tr key={p.sku}>
@@ -41,6 +43,9 @@ export function Produtos() {
                 <td className="font-mono">{p.sku}</td>
                 <td>{p.descricao_br}</td>
                 <td className="text-xs">{p.familia}</td>
+                <td><select className="!py-1 text-xs" value={p.sazonalidade ?? ''} onChange={(e) => editar(p, { sazonalidade: (e.target.value || null) as Sazonalidade | null })} aria-label={`Sazonal ${p.sku}`}>
+                  <option value="">—</option>{LISTA_SAZONALIDADES.map((s) => <option key={s} value={s}>{SAZONALIDADES[s].nome}</option>)}
+                </select></td>
                 <td>{p.unidade}</td>
                 <td><input type="number" className="w-20 !py-1" value={p.multiplo_caixa ?? ''} onChange={(e) => editar(p, { multiplo_caixa: e.target.value === '' ? null : Number(e.target.value) })} /></td>
                 <td><input type="number" className="w-20 !py-1" value={p.shelf_life_dias ?? ''} onChange={(e) => editar(p, { shelf_life_dias: e.target.value === '' ? null : Number(e.target.value) })} /></td>

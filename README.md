@@ -90,4 +90,5 @@ data/seed/                  # CSVs extraídos das planilhas atuais
 - [ ] Notificações por e-mail — aguardando definição do provedor
 - [x] Tradução FR (seletor PT | FR)
 - [x] Manutenção de bases: importação com prévia e desfazer, auditoria, saúde do cadastro
+- [x] Itens sazonais (Páscoa e Natal) liberados só em campanha: cadastro de campanhas (janela de pedidos e de embarque), coluna Sazonal na tabela mestre e no Portfólio, bloqueio no catálogo e no banco (migration 011)
 - [ ] Fase 5 — dashboards, refino com usuários

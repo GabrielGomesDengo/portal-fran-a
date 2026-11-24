@@ -9,12 +9,12 @@ import { temPreferencia } from '../i18n/idioma'
 
 const MENU: Record<Perfil, { para: string; rotulo: string }[]> = {
   franca: [{ para: '/', rotulo: 'Meus pedidos' }, { para: '/pedidos/novo', rotulo: 'Novo pedido' }, { para: '/indicadores', rotulo: 'Indicadores' }],
-  supply: [{ para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/indicadores', rotulo: 'Indicadores' }, { para: '/admin/produtos', rotulo: 'Portfólio' }],
+  supply: [{ para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/indicadores', rotulo: 'Indicadores' }, { para: '/admin/produtos', rotulo: 'Portfólio' }, { para: '/campanhas', rotulo: 'Campanhas' }],
   pcp: [{ para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/indicadores', rotulo: 'Indicadores' }],
   operacoes: [{ para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/indicadores', rotulo: 'Indicadores' }],
   admin: [
     { para: '/', rotulo: 'Início' }, { para: '/pedidos', rotulo: 'Pedidos' }, { para: '/pedidos/novo', rotulo: 'Novo pedido' }, { para: '/indicadores', rotulo: 'Indicadores' },
-    { para: '/admin/produtos', rotulo: 'Portfólio' }, { para: '/admin/parametros', rotulo: 'Parâmetros' }, { para: '/admin/usuarios', rotulo: 'Usuários' },
+    { para: '/admin/produtos', rotulo: 'Portfólio' }, { para: '/campanhas', rotulo: 'Campanhas' }, { para: '/admin/parametros', rotulo: 'Parâmetros' }, { para: '/admin/usuarios', rotulo: 'Usuários' },
     { para: '/admin/manutencao', rotulo: 'Manutenção' },
   ],
 }
